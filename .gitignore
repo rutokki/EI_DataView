@@ -1,0 +1,24 @@
+# Visual Studio build output
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+Win32/
+ipch/
+
+# Visual Studio user/cache files
+.vs/
+*.aps
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.ipch
+*.pch
+*.obj
+*.pdb
+*.ilk
+*.tlog
+*.log
+*.idb
+*.exp

@@ -1,0 +1,304 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="MainFrm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DataViewExDoc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DataViewExView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="WorkSpaceBar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="WorkSpaceBar2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CustomBCGGridCtrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FontSetting.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CustomBCGTabWnd.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SignalGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="SwitchGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="INCardGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="OUTCardGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="StructMainData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CommonUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PODCardGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="LogicVariableGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="TagNamePrintDlg.cpp">
+      <Filter>Dlg</Filter>
+    </ClCompile>
+    <ClCompile Include="DataViewEx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DiffCompareFrame.cpp">
+      <Filter>Dlg</Filter>
+    </ClCompile>
+    <ClCompile Include="InterlockGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="TestRightView.cpp">
+      <Filter>TestWnd</Filter>
+    </ClCompile>
+    <ClCompile Include="TestLeftView.cpp">
+      <Filter>TestWnd</Filter>
+    </ClCompile>
+    <ClCompile Include="TestContainer.cpp">
+      <Filter>TestWnd</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="GridPrintDlg.cpp">
+      <Filter>Dlg</Filter>
+    </ClCompile>
+    <ClCompile Include="TestPrintDlg.cpp">
+      <Filter>Dlg</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="WThread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DataComparison.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DataLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CustomBCGPEditCtrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SwitchCardGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="SignalCardGridInfo.cpp">
+      <Filter>Grid</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MainFrm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DataViewEx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DataViewExDoc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DataViewExView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WorkSpaceBar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WorkSpaceBar2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Logic_Typedef.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CustomBCGGridCtrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FontSetting.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CustomBCGTabWnd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GridColumnDefine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SwitchGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="SignalGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="INCardGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="OUTCardGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="StructMainData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BitUtility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PODCardGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="LogicVariableGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="TagNamePrintDlg.h">
+      <Filter>Dlg</Filter>
+    </ClInclude>
+    <ClInclude Include="DiffCompareFrame.h">
+      <Filter>Dlg</Filter>
+    </ClInclude>
+    <ClInclude Include="InterlockGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="TestRightView.h">
+      <Filter>TestWnd</Filter>
+    </ClInclude>
+    <ClInclude Include="TestLeftView.h">
+      <Filter>TestWnd</Filter>
+    </ClInclude>
+    <ClInclude Include="TestContainer.h">
+      <Filter>TestWnd</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="GridPrintDlg.h">
+      <Filter>Dlg</Filter>
+    </ClInclude>
+    <ClInclude Include="TestPrintDlg.h">
+      <Filter>Dlg</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WThread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DataComparison.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DataLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CustomBCGPEditCtrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DiffLine.h">
+      <Filter>Dlg</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="SignalCardGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+    <ClInclude Include="SwitchCardGridInfo.h">
+      <Filter>Grid</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\DataViewEx.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\DataViewExDoc.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\Toolbar.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="UserImages.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\toolbar1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\bmp00001.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\DataViewEx.rc2">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\DataViewEx.toolbar.rc2">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\Workspace.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\Toolbar.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\svg1.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\Toolbar2.svg" />
+    <None Include="C:\Users\User\Downloads\PageDiff_DataCompare구현_-_완전_가이드_요약.md" />
+    <None Include="EIDataViewEx.manifest" />
+    <None Include="EIDataViewEx.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms;visual-bcgsoft</Extensions>
+    </Filter>
+    <Filter Include="Grid">
+      <UniqueIdentifier>{9f4f7afd-6970-4621-aa63-e080011ac05c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utility">
+      <UniqueIdentifier>{6800298b-ba0c-4cd4-beb3-623cb3e9c5c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Dlg">
+      <UniqueIdentifier>{edaae47d-5d03-4af8-b36c-9f3e97b677af}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TestWnd">
+      <UniqueIdentifier>{5f74da2b-f7f3-46fe-be9a-a1c72cff18ff}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="EIDataViewEx.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

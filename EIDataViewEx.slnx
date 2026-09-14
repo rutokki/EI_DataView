@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="DataViewEx/EIDataViewEx.vcxproj" Id="5428d150-d7b5-4673-8b51-f7184d3fa963" />
+</Solution>
