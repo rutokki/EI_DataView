@@ -18,6 +18,10 @@ GridPrintDlg::GridPrintDlg(CWnd* pParent /*=nullptr*/)
 
 GridPrintDlg::~GridPrintDlg()
 {
+	if (m_btnFont.GetSafeHandle() != nullptr)
+	{
+		m_btnFont.DeleteObject();
+	}
 }
 
 void GridPrintDlg::DoDataExchange(CDataExchange* pDX)
@@ -167,6 +171,8 @@ BOOL GridPrintDlg::OnInitDialog()
 		}
 	}
 
+	SetWindowText(_T("그리드 테이블 인쇄"));
+
 	int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 	int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
@@ -182,15 +188,38 @@ BOOL GridPrintDlg::OnInitDialog()
 	CWnd* pPreviewStatic = GetDlgItem(IDC_STATIC_PREVIEW);
 	if (pPreviewStatic != nullptr) pPreviewStatic->ShowWindow(SW_HIDE);
 
-	CRect rectBtn;
-	printBtn.GetWindowRect(&rectBtn);
-	int btnWidth = rectBtn.Width();
-	int btnHeight = rectBtn.Height();
+	// [UI 개선] 예전에는 리소스 템플릿의 작은 버튼 크기(50x14 DLU)를 그대로 둔 채
+	// 위치만 옮겨서, 화면의 85%로 확대된 다이얼로그 안에 좁쌀만 한 버튼 4개가
+	// 불균일한 간격으로 떠 있는 것처럼 보였음. 버튼을 실제로 키우고, 폰트도 키우고,
+	// [이전/다음] - [인쇄/취소] 두 그룹으로 나눠 간격을 통일해 우측 하단에 정렬함.
+	prevBtn.SetWindowText(_T("◀ 이전"));
+	nextgBtn.SetWindowText(_T("다음 ▶"));
 
-	printBtn.MoveWindow(dlgWidth - btnWidth - 150, dlgHeight - btnHeight - 45, btnWidth, btnHeight);
-	cancelBtn.MoveWindow(dlgWidth - btnWidth - 40, dlgHeight - btnHeight - 45, btnWidth, btnHeight);
-	prevBtn.MoveWindow(dlgWidth - btnWidth - 370, dlgHeight - btnHeight - 45, btnWidth, btnHeight);
-	nextgBtn.MoveWindow(dlgWidth - btnWidth - 260, dlgHeight - btnHeight - 45, btnWidth, btnHeight);
+	if (m_btnFont.GetSafeHandle() == nullptr)
+	{
+		m_btnFont.CreatePointFont(120, _T("맑은 고딕"));
+	}
+	prevBtn.SetFont(&m_btnFont);
+	nextgBtn.SetFont(&m_btnFont);
+	printBtn.SetFont(&m_btnFont);
+	cancelBtn.SetFont(&m_btnFont);
+
+	const int btnWidth = 130;
+	const int btnHeight = 42;
+	const int gap = 14;
+	const int groupGap = 36;
+	const int bottomMargin = 30;
+
+	int btnY = dlgHeight - btnHeight - bottomMargin;
+	int cancelX = dlgWidth - btnWidth - bottomMargin;
+	int printX = cancelX - gap - btnWidth;
+	int nextX = printX - groupGap - btnWidth;
+	int prevX = nextX - gap - btnWidth;
+
+	cancelBtn.MoveWindow(cancelX, btnY, btnWidth, btnHeight);
+	printBtn.MoveWindow(printX, btnY, btnWidth, btnHeight);
+	nextgBtn.MoveWindow(nextX, btnY, btnWidth, btnHeight);
+	prevBtn.MoveWindow(prevX, btnY, btnWidth, btnHeight);
 
 	return TRUE;
 }
