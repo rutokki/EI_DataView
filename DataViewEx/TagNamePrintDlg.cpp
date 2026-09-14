@@ -532,7 +532,11 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 	if (dlg.DoModal() == IDOK)
 	{
 		HDC hDC = dlg.GetPrinterDC();
-		if (hDC == nullptr) return;
+		if (hDC == nullptr)
+		{
+			AfxMessageBox(_T("프린터 DC를 가져오지 못했습니다."));
+			return;
+		}
 
 		CDC dc;
 		dc.Attach(hDC);

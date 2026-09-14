@@ -44,6 +44,7 @@ public:
 	CString GetTrackLockRoute(WORD nRteNo);
 	CString GetAppLock(WORD nRteNo);
 	void SetStationName(CString strStationName);
+	bool HasPrintableData();
 
 	afx_msg void OnBnClickedTestPrintBtn();
 	afx_msg void OnPaint();

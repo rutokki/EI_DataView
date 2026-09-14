@@ -653,7 +653,11 @@ void TestPrintDlg::OnBnClickedTestPrintBtn()
 	if (dlg.DoModal() == IDOK)
 	{
 		HDC hDC = dlg.GetPrinterDC();
-		if (hDC == nullptr) return;
+		if (hDC == nullptr)
+		{
+			AfxMessageBox(_T("프린터 DC를 가져오지 못했습니다."));
+			return;
+		}
 
 		CDC dc;
 		dc.Attach(hDC);
@@ -963,6 +967,26 @@ CString TestPrintDlg::GetAppLock(WORD nRteNo)
 void TestPrintDlg::SetStationName(CString strStationName)
 {
 	m_strStationName = strStationName;
+}
+
+// [추가] 체크리스트(유효 진로) 또는 선로전환기 시험 항목이 하나라도 있는지 확인.
+// 각종표시등 페이지는 데이터 유무와 무관하게 항상 고정 항목을 인쇄하므로 판단 기준에서 제외.
+bool TestPrintDlg::HasPrintableData()
+{
+	auto routeSpan = StructMainData::GetInstance().GetRouteInfo();
+	auto ilkSpan = StructMainData::GetInstance().GetInterLockInfo();
+	auto stationInfo = StructMainData::GetInstance().GetStationInfo();
+
+	for (size_t i = 0; i < routeSpan.size(); ++i)
+	{
+		WORD nRteNo = static_cast<WORD>(i);
+		if (nRteNo >= ilkSpan.size()) continue;
+		CString strRouteName(ilkSpan[nRteNo].Name);
+		if (strRouteName.IsEmpty() || strRouteName.Find(_T('!')) != -1) continue;
+		return true;
+	}
+
+	return stationInfo.NoOfSwitch > 0;
 }
 int TestPrintDlg::GetTotalPageCount(std::vector<size_t>& validIndices, int& maxDisplayRows, int rowHeight, const CRect& rectA4, int startY, int& outSwitchPages, int& outIndicatorPages)
 {
