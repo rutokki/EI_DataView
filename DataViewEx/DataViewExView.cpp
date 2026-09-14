@@ -881,6 +881,11 @@ void CDataViewExView::OnPrintGridTable()
 	if (nActiveTab == 10)
 	{
 		TestPrintDlg dlg;
+		if (!dlg.HasPrintableData())
+		{
+			AfxMessageBox(_T("인쇄할 시험표 데이터가 없습니다."));
+			return;
+		}
 		dlg.SetStationName(pDoc->StationName);
 		dlg.DoModal();
 		return;
