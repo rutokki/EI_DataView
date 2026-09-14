@@ -73,7 +73,7 @@ static std::vector<std::pair<int, int>> GetPageRanges(const std::vector<std::vec
 	std::vector<std::pair<int, int>> ranges;
 	if (rows.empty()) return ranges;
 
-	if (gridType == 3 || gridType == 7)
+	if (gridType == (int)EGridType::Device || gridType == (int)EGridType::InterLockingData)
 	{
 		int maxPageWeight = 40; // 한 페이지 최대 허용 가중치
 		int curStart = 0;
@@ -134,7 +134,7 @@ BOOL GridPrintDlg::OnInitDialog()
 {
 	CBCGPDialog::OnInitDialog();
 
-	if (m_gridType == 3 || m_gridType == 7)
+	if (m_gridType == (int)EGridType::Device || m_gridType == (int)EGridType::InterLockingData)
 	{
 		m_isMultiLine = true;
 	}
@@ -143,7 +143,7 @@ BOOL GridPrintDlg::OnInitDialog()
 		m_isMultiLine = false;
 	}
 
-	if (m_gridType != 7)
+	if (m_gridType != (int)EGridType::InterLockingData)
 	{
 		bool bAlreadyHasNo = false;
 		if (!m_columnInfos.empty() && m_columnInfos[0].columnName == _T("번호"))
@@ -255,14 +255,16 @@ void GridPrintDlg::OnPaint()
 		CString headerText;
 		switch (m_gridType)
 		{
-		case 0: headerText = _T("궤도"); break;
-		case 1: headerText = _T("신호"); break;
-		case 2: headerText = _T("선호전환기"); break;
-		case 3: headerText = _T("폐색 및 기타 장비"); break;
-		case 4: headerText = _T("IN Card"); break;
-		case 5: headerText = _T("OUT Card"); break;
-		case 6: headerText = _T("로직 변수"); break;
-		case 7: headerText = _T("연동도표"); break;
+		case (int)EGridType::Track:            headerText = _T("궤도"); break;
+		case (int)EGridType::Signal:            headerText = _T("신호기"); break;
+		case (int)EGridType::Switch:            headerText = _T("선로전환기"); break;
+		case (int)EGridType::Device:            headerText = _T("폐색/건널목/히터/지장물"); break;
+		case (int)EGridType::INCard:            headerText = _T("IN Card"); break;
+		case (int)EGridType::OUTCard:           headerText = _T("OUT Card"); break;
+		case (int)EGridType::SignalCard:        headerText = _T("Signal Card"); break;
+		case (int)EGridType::SwitchCard:        headerText = _T("Switch Card"); break;
+		case (int)EGridType::LogicVariable:     headerText = _T("로직 변수"); break;
+		case (int)EGridType::InterLockingData:  headerText = _T("연동 도표"); break;
 		default: headerText = _T(""); break;
 		}
 
@@ -287,12 +289,12 @@ void GridPrintDlg::OnPaint()
 		int pageWeightSum = 0;
 		for (int r = startRow; r < endRow; ++r)
 		{
-			int w = (m_gridType == 3 || m_gridType == 7) ? GetMultiLineGridRowWeight(m_rows[r]) : 1;
+			int w = (m_gridType == (int)EGridType::Device || m_gridType == (int)EGridType::InterLockingData) ? GetMultiLineGridRowWeight(m_rows[r]) : 1;
 			rowWeights.push_back(w);
 			pageWeightSum += w;
 		}
 
-		int pageMaxWeight = (m_gridType == 3 || m_gridType == 7) ? (std::max)(40, pageWeightSum) : 30;
+		int pageMaxWeight = (m_gridType == (int)EGridType::Device || m_gridType == (int)EGridType::InterLockingData) ? (std::max)(40, pageWeightSum) : 30;
 		int unitHeight = tableHeight / (pageMaxWeight + 1);
 		int headerRowHeight = unitHeight;
 
@@ -480,15 +482,17 @@ void GridPrintDlg::OnBnClickedBtnPrint()
 			CString headerText;
 			switch (m_gridType)
 			{
-			case 0: headerText = _T("Track"); break;
-			case 1: headerText = _T("Signal"); break;
-			case 2: headerText = _T("Switch"); break;
-			case 3: headerText = _T("기타 장비"); break;
-			case 4: headerText = _T("IN Card"); break;
-			case 5: headerText = _T("OUT Card"); break;
-			case 6: headerText = _T("??"); break;
-			case 7: headerText = _T("연동도표"); break;
-			default: headerText = _T("기타 장비"); break;
+			case (int)EGridType::Track:            headerText = _T("궤도"); break;
+			case (int)EGridType::Signal:            headerText = _T("신호기"); break;
+			case (int)EGridType::Switch:            headerText = _T("선로전환기"); break;
+			case (int)EGridType::Device:            headerText = _T("폐색/건널목/히터/지장물"); break;
+			case (int)EGridType::INCard:            headerText = _T("IN Card"); break;
+			case (int)EGridType::OUTCard:           headerText = _T("OUT Card"); break;
+			case (int)EGridType::SignalCard:        headerText = _T("Signal Card"); break;
+			case (int)EGridType::SwitchCard:        headerText = _T("Switch Card"); break;
+			case (int)EGridType::LogicVariable:     headerText = _T("로직 변수"); break;
+			case (int)EGridType::InterLockingData:  headerText = _T("연동 도표"); break;
+			default: headerText = _T(""); break;
 			}
 
 			for (int page = 0; page < totalPages; ++page)
@@ -515,12 +519,12 @@ void GridPrintDlg::OnBnClickedBtnPrint()
 				int pageWeightSum = 0;
 				for (int r = startRow; r < endRow; ++r)
 				{
-					int w = (m_gridType == 3 || m_gridType == 7) ? GetMultiLineGridRowWeight(m_rows[r]) : 1;
+					int w = (m_gridType == (int)EGridType::Device || m_gridType == (int)EGridType::InterLockingData) ? GetMultiLineGridRowWeight(m_rows[r]) : 1;
 					rowWeights.push_back(w);
 					pageWeightSum += w;
 				}
 
-				int pageMaxWeight = (m_gridType == 3 || m_gridType == 7) ? (std::max)(40, pageWeightSum) : 30;
+				int pageMaxWeight = (m_gridType == (int)EGridType::Device || m_gridType == (int)EGridType::InterLockingData) ? (std::max)(40, pageWeightSum) : 30;
 				int unitHeight = tableHeight / (pageMaxWeight + 1);
 				int headerRowHeight = unitHeight;
 
