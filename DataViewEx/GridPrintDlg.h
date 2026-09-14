@@ -43,4 +43,7 @@ public:
 	CBCGPButton nextgBtn;
 	CBCGPButton printBtn;
 	CBCGPButton cancelBtn;
+
+protected:
+	CFont m_btnFont;
 };
