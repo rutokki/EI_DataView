@@ -136,10 +136,16 @@ namespace CommonUtil
 	}
 	inline const CString GetIOName(IO_Position io) {
 		CString str;
-		str.Format(_T("R-%02d, S-%02d, P-%02d"), io.Chassis, io.CardNo, io.PortNo);
+		str.Format(_T("R-%02d, C-%02d, S-%02d, P-%02d"), io.Chassis, io.CardNo, io.ModuleNo, io.PortNo);
 		return str;
 	}
-
+	// SO
+	inline const CString GetName(const SlowOrderInfoType& item) {
+		return GetSafeString(item.Name, _countof(item.Name));
+	}
+	inline const CString GetName(const AttractionInfoType& item) {
+		return GetSafeString(item.Name, _countof(item.Name));
+	}
 	/////////////////////////////////////////////////////
 	///////////////  IN Card GetName ////////////////////
 	/////////////////////////////////////////////////////

@@ -302,6 +302,60 @@ void DeviceGridInfo::LoadAllData()
 		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
 		AddRow(pRow, FALSE);
 	}
+	//==========================================
+	//8. 임시속도 데이터 로딩
+	//==========================================
+	auto slowOrderList = StructMainData::GetInstance().GetSlowOrderInfo();
+	for (const auto& item : slowOrderList) {
+		if (item.Name[0] == 0 || item.Name[0] == 0xFF) {
+			continue;
+		}
+		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
+		pRow->SetLinesNumber(3);
+		pRow->GetItem(0)->SetValue(_T("임시속도"));
+		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
+
+		// [2번 컬럼] 구분 - Type bit0=1 : 인접역 임시속도
+		CString strKind = IsBitSet(item.Type, 0) ? _T("인접역 임시속도") : _T("자체 임시속도");
+		pRow->GetItem(2)->SetValue((LPCTSTR)strKind);
+
+		CString soTracks;
+		for (int i = 0; i < MAX_SLOW_ORDER_TRACK; i++)
+		{
+			Byte_t trkNo = item.TrackNo[i];
+			if (trkNo == 0 || trkNo == 0xFF) continue;
+			if (!soTracks.IsEmpty()) soTracks += _T(", ");
+			soTracks += GetDBNameByNumber(trkNo, TrackIdx);
+		}
+		CString soSignals;
+		for (int j = 0; j < MAX_SLOW_ORDER_SIGNAL; j++)
+		{
+			Byte_t sigNo = item.SIgnalNo[j];
+			if (sigNo == 0 || sigNo == 0xFF) continue;
+			if (!soSignals.IsEmpty()) soSignals += _T(", ");
+			soSignals += GetDBNameByNumber(sigNo, SignalIdx);
+		}
+		CString strResult;
+		if (!soTracks.IsEmpty()) strResult.AppendFormat(_T("관련 궤도 : %s\r\n"), (LPCTSTR)soTracks);
+		if (!soSignals.IsEmpty()) strResult.AppendFormat(_T("관련 신호기 : %s"), (LPCTSTR)soSignals);
+		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
+		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화
+		AddRow(pRow, FALSE);
+	}
+	//==========================================
+	//9. 끌림 감시장치 데이터 로딩
+	//==========================================
+	// [주의] AttractionInfoType에는 Name 외 실제 데이터 필드가 없음(Spare만 존재)
+	auto attractionList = StructMainData::GetInstance().GetAttractionInfo();
+	for (const auto& item : attractionList) {
+		if (item.Name[0] == 0 || item.Name[0] == 0xFF) {
+			continue;
+		}
+		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
+		pRow->GetItem(0)->SetValue(_T("끌림 감시장치"));
+		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
+		AddRow(pRow, FALSE);
+	}
 }
 // ---------------------------------------------------------
 // 3. 유틸리티 함수들 (데이터 문자열 변환용)

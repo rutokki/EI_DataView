@@ -158,9 +158,9 @@ void TestRightView::OnSize(UINT nType, int cx, int cy)
 
 void TestRightView::UpdateRouteData(WORD nRteNo)
 {
-	// [수정] TestLeftView가 더 이상 진로 번호를 +1 시켜서 넘기지 않으므로(0번 진로도
-	// 유효한 선택), 0을 "선택 없음"으로 취급해 걸러내던 이 가드를 제거함. 범위
-	// 검사는 각 Get*Lock 함수 내부에서 ilkSpan.size() 기준으로 이미 하고 있음.
+	if (nRteNo == 0)
+		return;
+
 	CString strSignalLock = GetSignalLock(nRteNo, false);
 	CString strSwitchLock = GetSwitchLock(nRteNo, true, false);
 	CString strTrackAll = GetTrackLockAll(nRteNo, 0, false);
@@ -208,11 +208,7 @@ CString TestRightView::GetSwitchLock(WORD nRteNo, bool bIsAddTotSig, bool bIsPrt
 {
 	auto ilkSpan = StructMainData::GetInstance().GetInterLockInfo();
 	auto routeSpan = StructMainData::GetInstance().GetRouteInfo();
-	// [수정] ilkSpan/routeSpan은 같은 크기(MAX_ROUTE)의 평행 배열이라 같은 nRteNo로
-	// 같은 진로를 가리켜야 함(GetTrackLockAll과 동일). "-1"은 이 함수 안에서 쓰는
-	// ilkSpan[nRteNo]와 어긋나서 일괄제어 신호기(TotRteSigNo)가 엉뚱한 진로 데이터를
-	// 읽게 되는 버그였음.
-	int nRouteIdx = (int)nRteNo;
+	int nRouteIdx = (int)nRteNo - 1;
 
 	if (nRteNo >= ilkSpan.size() || nRouteIdx < 0 || nRouteIdx >= routeSpan.size())
 		return _T("");
