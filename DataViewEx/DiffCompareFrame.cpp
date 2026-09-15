@@ -1909,9 +1909,9 @@ void DiffCompareFrame::ProcessBinDiffSelection(const CString& type)
 	if (type == _T("역") || type == _T("연동도표(진로 정보)") || type == _T("궤도") ||
 		type == _T("신호기") || type == _T("선로전환기") || type == _T("폐색") ||
 		type == _T("기타 고장 정보 및 출발 반응등") ||
-		type == _T("입력카드 및 카드 Addr") || type == _T("") || type == _T("CPT") ||
+		type == _T("신호기 및 선로전환기 Card") || type == _T("") || type == _T("CPT") ||
 		type == _T("DWELL") || type == _T("제어 건널목") || type == _T("INCardList") ||
-		type == _T("OutCardList"))
+		type == _T("OutCardList") || type == _T("임시속도") || type == _T("끌림 감시장치"))
 	{
 		ResetEditContent();
 	}
@@ -1938,7 +1938,7 @@ void DiffCompareFrame::ProcessBinDiffSelection(const CString& type)
 	else if (type == _T("기타 고장 정보 및 출발 반응등")) {
 		SetAllFaultInfo();
 	}
-	else if (type == _T("입력카드 및 카드 Addr")) {
+	else if (type == _T("신호기 및 선로전환기 Card")) {
 		SetAllIOCardInfo();
 	}
 	else if (type == _T("CPT")) {
@@ -3681,14 +3681,193 @@ std::vector<CString> DiffCompareFrame::ConvertFaultInfoText(const std::span<Faul
 	return lines;
 }
 
-std::vector<CString> DiffCompareFrame::ConvertSOInfoText(const std::span<SlowOrderInfoType>& list, bool)
+std::vector<CString> DiffCompareFrame::ConvertSOInfoText(const std::span<SlowOrderInfoType>& list, bool bIsOrigin)
 {
-	return std::vector<CString>();
+	std::vector<CString> lines;
+	CString temp;
+
+	// 원본인지 비교군인지에 따라 CommonUtil 함수를 선택하는 람다
+	auto GetDBName = [&](BYTE nNum, GetDBNameByNum num) -> CString {
+		if (bIsOrigin) {
+			return CommonUtil::GetOriginNameByNumber(nNum, num);
+		}
+		else {
+			return CommonUtil::GetDiffNameByNumber(nNum, num);
+		}
+		};
+
+	for (const auto& item : list)
+	{
+		if (item.Name[0] == 0 || item.Name[0] == 0xFF) continue;
+		lines.push_back(_T("========================================"));
+		CString name = GetSafeString(item.Name, 20);
+		temp.Format(_T("[임시 속도 명칭] %s"), (LPCTSTR)name);
+		lines.push_back(temp);
+		lines.push_back(_T("----------------------------------------"));
+
+		CString soType = IsBitSet(item.Type, 0) ? _T("인접역 임시속도") : _T("자체 임시속도");
+		temp.Format(_T("  - 타입 (Type): %s"), (LPCTSTR)soType);
+		lines.push_back(temp);
+
+		CString soTracks;
+		for (int i = 0; i < MAX_SLOW_ORDER_TRACK; i++)
+		{
+			BYTE trkNo = item.TrackNo[i];
+			if (trkNo == 0 || trkNo == 0xFF) continue;
+			CString trkName = GetDBName(trkNo, TrackIdx);
+			if (!soTracks.IsEmpty()) soTracks += _T(", ");
+			CString tmp; tmp.Format(_T("(%s)"), (LPCTSTR)trkName);
+			soTracks += tmp;
+		}
+		if (!soTracks.IsEmpty())
+		{
+			temp.Format(_T("  - 관련 궤도 (TrackNo): %s"), (LPCTSTR)soTracks);
+			lines.push_back(temp);
+		}
+
+		CString soSignals;
+		for (int j = 0; j < MAX_SLOW_ORDER_SIGNAL; j++)
+		{
+			BYTE sigNo = item.SIgnalNo[j];
+			if (sigNo == 0 || sigNo == 0xFF) continue;
+			CString sigName = GetDBName(sigNo, SignalIdx);
+			if (!soSignals.IsEmpty()) soSignals += _T(", ");
+			CString tmp; tmp.Format(_T("(%s)"), (LPCTSTR)sigName);
+			soSignals += tmp;
+		}
+		if (!soSignals.IsEmpty())
+		{
+			temp.Format(_T("  - 관련 신호기 (SIgnalNo): %s"), (LPCTSTR)soSignals);
+			lines.push_back(temp);
+		}
+
+		lines.push_back(_T(""));
+	}
+	return lines;
+}
+
+void DiffCompareFrame::SetSOInfo()
+{
+	auto& dc = DataComparison::GetInstance();
+
+	std::vector<CString> leftLines;
+	std::vector<CString> rightLines;
+
+	const bool hasOrigin = dc.HasOriginal();
+	const bool hasDiff = dc.HasDiff();
+	bool hasLeftData = true;
+	bool hasRightData = true;
+	// 1. 둘 다 데이터가 없으면 중단
+	if (!hasOrigin && !hasDiff)
+	{
+		return;
+	}
+
+	// 2. 원본(Left) 데이터 수집 및 예외 처리
+	if (hasOrigin)
+	{
+		auto SOInfo = dc.GetOriginalSlowOrder();
+		leftLines = ConvertSOInfoText(SOInfo, true);
+		if (leftLines.empty())
+		{
+			hasLeftData = false;
+			leftLines.push_back(_T("원본 데이터가 없습니다."));
+		}
+	}
+	else
+	{
+		leftLines.push_back(_T("선택한 파일이 없습니다."));
+	}
+
+	// 3. 비교군(Right) 데이터 수집 및 예외 처리
+	if (hasDiff)
+	{
+		auto DiffSOInfo = dc.GetDiffSlowOrder();
+		rightLines = ConvertSOInfoText(DiffSOInfo, false);
+		if (rightLines.empty())
+		{
+			hasRightData = false;
+			rightLines.push_back(_T("비교 데이터가 없습니다."));
+		}
+	}
+	else
+	{
+		rightLines.push_back(_T("비교할 파일이 없습니다."));
+	}
+
+	// 4. 수집된 라인을 전달하여 [Diff 정렬 -> 화면 출력 -> 색상 하이라이트] 일괄 처리
+	ApplyCompareOrSingle(hasLeftData, hasRightData, leftLines, rightLines);
+}
+
+void DiffCompareFrame::SetAttractionInfo()
+{
+	auto& dc = DataComparison::GetInstance();
+
+	std::vector<CString> leftLines;
+	std::vector<CString> rightLines;
+
+	const bool hasOrigin = dc.HasOriginal();
+	const bool hasDiff = dc.HasDiff();
+	bool hasLeftData = true;
+	bool hasRightData = true;
+	// 1. 둘 다 데이터가 없으면 중단
+	if (!hasOrigin && !hasDiff)
+	{
+		return;
+	}
+
+	// 2. 원본(Left) 데이터 수집 및 예외 처리
+	if (hasOrigin)
+	{
+		auto AttrInfo = dc.GetOriginalAttraction();
+		leftLines = ConvertAttrInfoText(AttrInfo, true);
+		if (leftLines.empty())
+		{
+			hasLeftData = false;
+			leftLines.push_back(_T("원본 데이터가 없습니다."));
+		}
+	}
+	else
+	{
+		leftLines.push_back(_T("선택한 파일이 없습니다."));
+	}
+
+	// 3. 비교군(Right) 데이터 수집 및 예외 처리
+	if (hasDiff)
+	{
+		auto DiffAttrInfo = dc.GetDiffAttraction();
+		rightLines = ConvertAttrInfoText(DiffAttrInfo, false);
+		if (rightLines.empty())
+		{
+			hasRightData = false;
+			rightLines.push_back(_T("비교 데이터가 없습니다."));
+		}
+	}
+	else
+	{
+		rightLines.push_back(_T("비교할 파일이 없습니다."));
+	}
+
+	// 4. 수집된 라인을 전달하여 [Diff 정렬 -> 화면 출력 -> 색상 하이라이트] 일괄 처리
+	ApplyCompareOrSingle(hasLeftData, hasRightData, leftLines, rightLines);
 }
 
 std::vector<CString> DiffCompareFrame::ConvertAttrInfoText(const std::span<AttractionInfoType>& list, bool)
 {
-	return std::vector<CString>();
+	std::vector<CString> lines;
+	CString temp;
+	for (const auto& item : list)
+	{
+		if (item.Name[0] == 0 || item.Name[0] == 0xFF) continue;
+		lines.push_back(_T("========================================"));
+		CString attrName = GetName(item);
+		temp.Format(_T("[끌림 감시장치 명칭] %s"), (LPCTSTR)attrName);
+		lines.push_back(temp);
+		lines.push_back(_T("----------------------------------------"));
+		// [주의] AttractionInfoType에는 Name 외 실제 데이터 필드가 없음(Spare만 존재)
+		lines.push_back(_T(""));
+	}
+	return lines;
 }
 
 // 6. 히터 정보 텍스트 변환

@@ -77,7 +77,7 @@ bool CWorkSpaceBar::SetTreeViewData()
 	m_wndTree.InsertItem(_T("끌림 감시장치"), m_hBinDiffNode);
 	m_wndTree.InsertItem(_T("INCardList"), m_hBinDiffNode);
 	m_wndTree.InsertItem(_T("OutCardList"), m_hBinDiffNode);
-	m_wndTree.InsertItem(_T("Switch / Signal Card"), m_hBinDiffNode);
+	m_wndTree.InsertItem(_T("신호기 및 선로전환기 Card"), m_hBinDiffNode);
 
 	m_wndTree.InsertItem(_T("VRD "), m_hLogicDiffNode);
 	m_wndTree.InsertItem(_T("궤도 "), m_hLogicDiffNode);

@@ -760,11 +760,7 @@ CString TestPrintDlg::GetSwitchLock(WORD nRteNo, bool bIsAddTotSig)
 {
 	auto ilkSpan = StructMainData::GetInstance().GetInterLockInfo();
 	auto routeSpan = StructMainData::GetInstance().GetRouteInfo();
-	// [수정] ilkSpan/routeSpan은 같은 크기(MAX_ROUTE)의 평행 배열이라 같은 nRteNo로
-	// 같은 진로를 가리켜야 함(GetTrackLockAll과 동일). "-1"은 이 함수 안에서 쓰는
-	// ilkSpan[nRteNo]와 어긋나서 일괄제어 신호기(TotRteSigNo)가 엉뚱한 진로 데이터를
-	// 읽게 되는 버그였음.
-	int nRouteIdx = (int)nRteNo;
+	int nRouteIdx = (int)nRteNo - 1;
 
 	if (nRteNo >= ilkSpan.size() || nRouteIdx < 0 || nRouteIdx >= routeSpan.size())
 		return _T("");

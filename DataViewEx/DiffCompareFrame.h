@@ -170,7 +170,9 @@ private:
 
 	std::vector<CString> ConvertFaultInfoText(const std::span<FaultInfoType>& list, bool bIsOrigin);
 
+	void SetSOInfo();              // 임시속도
 	std::vector<CString> ConvertSOInfoText(const std::span<SlowOrderInfoType>& list, bool);
+	void SetAttractionInfo();      // 끌림 감시장치
 	std::vector<CString>ConvertAttrInfoText(const std::span <AttractionInfoType>& list, bool);
 
 
