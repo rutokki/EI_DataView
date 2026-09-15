@@ -170,6 +170,10 @@ private:
 
 	std::vector<CString> ConvertFaultInfoText(const std::span<FaultInfoType>& list, bool bIsOrigin);
 
+	std::vector<CString> ConvertSOInfoText(const std::span<SlowOrderInfoType>& list, bool);
+	std::vector<CString>ConvertAttrInfoText(const std::span <AttractionInfoType>& list, bool);
+
+
 	// 2. 고장 및 이례사항 관리 함수
 	void SetAllFaultInfo();
 	std::vector<CString> ConvertHeatInfoText(const std::span<HeatInfoType>& list, bool bIsOrigin);

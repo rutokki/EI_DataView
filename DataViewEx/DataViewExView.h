@@ -107,6 +107,8 @@ public:
 	afx_msg void OnFileSave();
 	void OnPrintGridTable();
 	bool ExtractGridData(CBCGPGridCtrl* pGrid, const std::vector<CString>& headers, std::vector<std::vector<CString>>& rows);
+	// [TEMP-DEBUG] GridPrintDlg UI 확인용 더미 데이터 생성. 확인 끝나면 선언/구현/호출부 모두 삭제하세요.
+	void FillDummyRowsForPrintPreview(const std::vector<ColumnInfo>& columnInfos, std::vector<std::vector<CString>>& rows);
 	afx_msg void OnAppDiff();
 	//	afx_msg void OnClose();
 	afx_msg void OnDestroy();

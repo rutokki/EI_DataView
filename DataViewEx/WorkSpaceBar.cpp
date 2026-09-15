@@ -71,13 +71,15 @@ bool CWorkSpaceBar::SetTreeViewData()
 	m_wndTree.InsertItem(_T("선로전환기"), m_hBinDiffNode);
 	m_wndTree.InsertItem(_T("폐색"), m_hBinDiffNode);
 	m_wndTree.InsertItem(_T("기타 고장 정보 및 출발 반응등"), m_hBinDiffNode);
-	m_wndTree.InsertItem(_T("입력카드 및 카드 Addr"), m_hBinDiffNode);
 	m_wndTree.InsertItem(_T("CPT"), m_hBinDiffNode);
 	m_wndTree.InsertItem(_T("DWELL"), m_hBinDiffNode);
+	m_wndTree.InsertItem(_T("임시속도"), m_hBinDiffNode);
+	m_wndTree.InsertItem(_T("끌림 감시장치"), m_hBinDiffNode);
 	m_wndTree.InsertItem(_T("INCardList"), m_hBinDiffNode);
 	m_wndTree.InsertItem(_T("OutCardList"), m_hBinDiffNode);
+	m_wndTree.InsertItem(_T("Switch / Signal Card"), m_hBinDiffNode);
 
-	m_wndTree.InsertItem(_T("속도코드제어장치 VRD "), m_hLogicDiffNode);
+	m_wndTree.InsertItem(_T("VRD "), m_hLogicDiffNode);
 	m_wndTree.InsertItem(_T("궤도 "), m_hLogicDiffNode);
 	m_wndTree.InsertItem(_T("선로전환기 "), m_hLogicDiffNode);
 	m_wndTree.InsertItem(_T("신호기 "), m_hLogicDiffNode);

@@ -27,6 +27,7 @@ enum class BlockKind : Byte_t
 	// 다만 14의 정확한 명칭/세부 구분은 구조체 어디에도 정의되어 있지 않아 확인이 필요함.
 	BiDirectionalEtc = 14 // 양방향 폐색 계열로 추정 (정확한 명칭 미확인 - 구조체 원본에 14 자체가 이름 없이 언급만 됨)
 };
+
 // [삭제] 기존 enum class BlockAspect(1~8)는 실제 DB 필드 BlockTagInfoType::BlockAspect와
 // 값 체계가 전혀 다른, 잘못된 모델이었음. 원본 구조체 주석(EI_IP_DBStruct_Typedef.h)에 따르면
 // item.BlockAspect는 이 enum이 아니라 그냥 "현시 개수"(2/3/4/5)를 담은 순수 숫자 값이고,
