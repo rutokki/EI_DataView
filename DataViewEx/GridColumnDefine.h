@@ -45,7 +45,26 @@ public:
 		default:                        return {};
 		}
 	}
-	// 나중 ENUM타입 변수를 Switch문으로 넘겨 케이스 판별후 그리드 반환하는 함수 작성 
+	// 그리드마다 "이름/명칭" 컬럼이 항상 0번이 아니므로(Rack No/Slot No/분류 등이 먼저 오는
+	// 경우가 있음), 검색/필터 기능에서 쓸 실제 이름 컬럼 인덱스를 반환.
+	static int GetNameColumnIndex(EGridType type)
+	{
+		switch (type)
+		{
+		case EGridType::Track:            return 0; // 궤도명
+		case EGridType::Signal:           return 0; // 명칭
+		case EGridType::Switch:           return 0; // 명칭
+		case EGridType::Device:           return 1; // 명칭 (0:분류)
+		case EGridType::INCard:           return 4; // 이름
+		case EGridType::OUTCard:          return 4; // 이름
+		case EGridType::SignalCard:       return 5; // 이름
+		case EGridType::SwitchCard:       return 6; // 이름
+		case EGridType::LogicVariable:    return 1; // 명칭 (0:로직IDX)
+		case EGridType::InterLockingData: return 1; // 진로명 (0:번호)
+		default:                          return 0;
+		}
+	}
+	// 나중 ENUM타입 변수를 Switch문으로 넘겨 케이스 판별후 그리드 반환하는 함수 작성
 	// 궤도 칼럼 20~ 150 궤도 종류 묶음
 	static std::vector<ColumnInfo> GetTrackColumnInfo()
 	{ //7050

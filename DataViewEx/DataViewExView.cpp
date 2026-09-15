@@ -16,6 +16,9 @@
 #define new DEBUG_NEW
 #endif
 
+// 그리드 이름 검색바 컨트롤 ID (이 뷰 안에서만 쓰는 로컬 ID, 다른 자식 컨트롤과 안 겹치게 1090번대 사용)
+#define IDC_GRID_SEARCH_EDIT     1090
+#define IDC_GRID_SEARCH_NEXT_BTN 1091
 
 // CDataViewExView
 
@@ -38,6 +41,7 @@ BEGIN_MESSAGE_MAP(CDataViewExView, CView)
 	ON_COMMAND(ID_DIFF_TOOL, &CDataViewExView::OnDiffTool)
 	ON_COMMAND(ID_FILE_SAVE, &CDataViewExView::OnFileSave)
 	ON_COMMAND(ID_APP_DIFF, &CDataViewExView::OnAppDiff)
+	ON_BN_CLICKED(IDC_GRID_SEARCH_NEXT_BTN, &CDataViewExView::OnSearchNext)
 	//	ON_WM_CLOSE()
 	ON_WM_DESTROY()
 END_MESSAGE_MAP()
@@ -70,6 +74,20 @@ BOOL CDataViewExView::PreCreateWindow(CREATESTRUCT& cs)
 	//  the CREATESTRUCT cs
 
 	return CView::PreCreateWindow(cs);
+}
+
+// 그리드 이름 검색 Edit박스에서 Enter를 누르면 "찾기" 버튼을 누른 것과 동일하게 동작시킴.
+// 일반 CEdit는 CView 안에서는 Enter 키를 자동으로 처리해주지 않아서 직접 가로채야 함.
+BOOL CDataViewExView::PreTranslateMessage(MSG* pMsg)
+{
+	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN &&
+		m_wndSearchEdit.GetSafeHwnd() != NULL && pMsg->hwnd == m_wndSearchEdit.GetSafeHwnd())
+	{
+		OnSearchNext();
+		return TRUE; // 메시지 소비 (Enter로 인한 경고음/기본 처리 방지)
+	}
+
+	return CView::PreTranslateMessage(pMsg);
 }
 
 // CDataViewExView drawing
@@ -111,6 +129,66 @@ CBCGPGridCtrl* CDataViewExView::GetActiveGrid()
 	}
 	return nullptr;
 }
+
+// 탭 인덱스를 EGridType으로 매핑. OnPrintGridTable/검색·필터 기능이 공유하는 단일 소스
+// (예전엔 이 매핑이 GridPrintDlg.cpp에도 따로 있었고 그리드가 추가될 때 어긋난 적이 있었음).
+EGridType CDataViewExView::TabIndexToGridType(int nActiveTab)
+{
+	switch (nActiveTab)
+	{
+	case 0: return EGridType::Track;
+	case 1: return EGridType::Signal;
+	case 2: return EGridType::Switch;
+	case 3: return EGridType::Device;
+	case 4: return EGridType::INCard;
+	case 5: return EGridType::OUTCard;
+	case 6: return EGridType::SignalCard;
+	case 7: return EGridType::SwitchCard;
+	case 8: return EGridType::LogicVariable;
+	case 9: return EGridType::InterLockingData;
+	case 10: return EGridType::Test;
+	default: return EGridType::Track;
+	}
+}
+
+void CDataViewExView::OnSearchNext()
+{
+	CString strSearch;
+	m_wndSearchEdit.GetWindowText(strSearch);
+	strSearch.Trim();
+
+	CBCGPGridCtrl* pGrid = GetActiveGrid();
+	if (pGrid == nullptr)
+	{
+		BCGPMessageBox(_T("검색할 수 있는 그리드 탭이 아닙니다."));
+		return;
+	}
+
+	// 검색/필터 로직 자체는 CustomBCGGridCtrl::SearchByName()에 구현돼 있음(필터 적용,
+	// 다음 찾기 이어하기, 네이티브 필터바 UI 숨김까지 그리드 스스로 처리). IN Card 탭
+	// (INCardGridInfo)만 예외적으로 CBCGPGridCtrl을 직접 상속해서 CustomBCGGridCtrl이 아니므로
+	// 이 탭에서는 검색을 지원하지 않음을 안내.
+	CustomBCGGridCtrl* pCustomGrid = DYNAMIC_DOWNCAST(CustomBCGGridCtrl, pGrid);
+	if (pCustomGrid == nullptr)
+	{
+		BCGPMessageBox(_T("이 탭은 이름 검색을 지원하지 않습니다."));
+		return;
+	}
+
+	// [수정] 그리드마다 이름 컬럼 위치가 다르므로(Rack No 등이 먼저 오는 경우가 있음)
+	// 탭 → EGridType → 실제 이름 컬럼 인덱스 순으로 계산해서 사용 (더 이상 0번 고정 아님).
+	int nActiveTab = m_wndTabCtrl.GetActiveTab();
+	EGridType gridType = TabIndexToGridType(nActiveTab);
+	int nNameColumn = GridColumnDefine::GetNameColumnIndex(gridType);
+
+	bool bFound = pCustomGrid->SearchByName(strSearch, nNameColumn);
+
+	if (!strSearch.IsEmpty() && !bFound)
+	{
+		BCGPMessageBox(_T("일치하는 항목을 찾을 수 없습니다."));
+	}
+}
+
 void CDataViewExView::OnFilePrintPreview()
 {
 	auto Data = StructMainData::GetInstance().GetEIDBStruct();
@@ -306,8 +384,28 @@ void CDataViewExView::updateLayOut()
 	CRect rectClient;
 	GetClientRect(rectClient);
 
-	// 1. 탭 컨트롤 전체 크기 조절
-	m_wndTabCtrl.SetWindowPos(NULL, rectClient.left, rectClient.top, rectClient.Width(), rectClient.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+	// 0. 상단에 그리드 이름 검색바를 위한 공간 확보
+	int nSearchBarHeight = 0;
+	if (m_wndSearchEdit.GetSafeHwnd() != NULL)
+	{
+		const int nMargin = 4;
+		const int nBarHeight = 24;
+		const int nBtnWidth = 60;
+
+		int nEditWidth = rectClient.Width() - (nMargin * 3) - nBtnWidth;
+		if (nEditWidth < 60) nEditWidth = 60;
+
+		m_wndSearchEdit.SetWindowPos(NULL, rectClient.left + nMargin, rectClient.top + nMargin,
+			nEditWidth, nBarHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		m_wndSearchNextBtn.SetWindowPos(NULL, rectClient.left + nMargin + nEditWidth + nMargin, rectClient.top + nMargin,
+			nBtnWidth, nBarHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+
+		nSearchBarHeight = nBarHeight + (nMargin * 2);
+	}
+
+	// 1. 탭 컨트롤 크기 조절 (검색바 아래부터 채움)
+	m_wndTabCtrl.SetWindowPos(NULL, rectClient.left, rectClient.top + nSearchBarHeight,
+		rectClient.Width(), rectClient.Height() - nSearchBarHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 	m_wndTabCtrl.RedrawWindow();
 
 
@@ -473,7 +571,22 @@ void CDataViewExView::OnInitialUpdate()
 		m_wndTabCtrl.Invalidate();
 		DeleteAttributeTab();
 	}
+	if (!m_wndSearchEdit.GetSafeHwnd())
+	{
+		// 그리드 이름 검색("찾기") 바. 실제 위치/크기는 updateLayOut()에서 잡음.
+		CRect rectDummy(0, 0, 0, 0);
+		m_wndSearchEdit.Create(WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, rectDummy, this, IDC_GRID_SEARCH_EDIT);
+		m_wndSearchEdit.SetFont(&FontSetting::FontDungGeunMo);
+		// 빈 칸일 때 회색으로 안내 문구 표시 (입력값 자체에는 영향 없음, 이름만 검색됨을 안내)
+		m_wndSearchEdit.SendMessage(EM_SETCUEBANNER, 0, (LPARAM)(LPCWSTR)_T("이름으로 검색"));
+
+		m_wndSearchNextBtn.Create(_T("찾기"), WS_CHILD | WS_VISIBLE, rectDummy, this, IDC_GRID_SEARCH_NEXT_BTN);
+		m_wndSearchNextBtn.SetFont(&FontSetting::FontDungGeunMo);
+	}
 	SetupGrids();
+
+	// 방금 만든 검색바/탭 컨트롤 크기를 첫 화면에서부터 바로 맞춤 (OnSize가 아직 안 불렸을 수 있음)
+	updateLayOut();
 
 	UpdateGridsData();
 	//그리드 생성 및 초기화
@@ -903,23 +1016,8 @@ void CDataViewExView::OnPrintGridTable()
 
 	// 1. 현재 활성화된 탭의 인덱스 가져오기
 
-	// 2. 탭 인덱스를 EGridType ENUM으로 매핑
-	EGridType gridType = EGridType::Unknown;
-	switch (nActiveTab)
-	{
-	case 0: gridType = EGridType::Track;          break;
-	case 1: gridType = EGridType::Signal;         break;
-	case 2: gridType = EGridType::Switch;         break;
-	case 3: gridType = EGridType::Device;         break;
-	case 4: gridType = EGridType::INCard;         break;
-	case 5: gridType = EGridType::OUTCard;        break;
-	case 6: gridType = EGridType::SignalCard;   break;
-	case 7: gridType = EGridType::SwitchCard;   break;
-	case 8: gridType = EGridType::LogicVariable;  break;
-	case 9: gridType = EGridType::InterLockingData; break;
-	case 10: gridType = EGridType::Test;           break;
-	default: gridType = EGridType::Track;         break;
-	}
+	// 2. 탭 인덱스를 EGridType ENUM으로 매핑 (검색/필터 기능과 공유하는 단일 매핑 함수)
+	EGridType gridType = TabIndexToGridType(nActiveTab);
 
 	// [추가] Test 탭(인덱스 8)인 경우 TestPrintDlg 실행 후 종료
 
