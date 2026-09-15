@@ -204,14 +204,21 @@ BOOL GridPrintDlg::OnInitDialog()
 	printBtn.SetFont(&m_btnFont);
 	cancelBtn.SetFont(&m_btnFont);
 
+	// [수정] dlgWidth/dlgHeight는 SetWindowPos에 넘긴 "바깥쪽 윈도우" 크기(타이틀바/테두리
+	// 포함)라서, 자식 컨트롤 좌표(클라이언트 영역 기준) 계산에 그대로 쓰면 버튼이 타이틀바
+	// 높이만큼 아래로 밀려 클라이언트 영역 밖으로 잘려 보임. CenterWindow() 이후 실제
+	// 클라이언트 사각형을 다시 구해서 그 기준으로 배치함.
+	CRect rectClient;
+	GetClientRect(&rectClient);
+
 	const int btnWidth = 130;
 	const int btnHeight = 42;
 	const int gap = 14;
 	const int groupGap = 36;
 	const int bottomMargin = 30;
 
-	int btnY = dlgHeight - btnHeight - bottomMargin;
-	int cancelX = dlgWidth - btnWidth - bottomMargin;
+	int btnY = rectClient.bottom - btnHeight - bottomMargin;
+	int cancelX = rectClient.right - btnWidth - bottomMargin;
 	int printX = cancelX - gap - btnWidth;
 	int nextX = printX - groupGap - btnWidth;
 	int prevX = nextX - gap - btnWidth;

@@ -5,8 +5,10 @@
 #include <vector>
 #include <algorithm>
 #include "CommonUtils.h"
+#include "BitUtility.h"
 using namespace CommonUtil;
 using namespace RouteInfo;
+
 #define WM_LOGIC_DIFF_FINISHED (WM_USER + 101)
 #define WM_RENDER_NEXT_CHUNK (WM_USER +102)
 // ==========================================
@@ -49,38 +51,15 @@ struct ResultPackage {
 //	return tokens;
 //}
 struct BinBlockUnit {
-	CString key;                  // 최상위 블록의 고유 이름 (예: "[폐색 이름] 2A", "[ Station Information ]")
+	CString key;                  // 최상위 블록의 고유 명칭 (예: "[폐색 명칭] 2A", "[ Station Information ]")
 	std::vector<CString> lines;   // 해당 블록에 속한 모든 하위 라인들
 };
-enum class LineCompareResult
-{
-	Same,        // 완전히 같거나, 둘 다 사실상 빈 줄
-	LeftOnly,    // 왼쪽만 내용이 있음 (오른쪽이 비어있음) -> 삭제 취급
-	RightOnly,   // 오른쪽만 내용이 있음 (왼쪽이 비어있음) -> 추가 취급
-	Different    // 둘 다 내용이 있고 서로 다름 -> 진짜 수정
-};
-static LineCompareResult CompareLineForDiff(const CString& a, const CString& b)
-{
-	if (a == b)
-		return LineCompareResult::Same;
+// 파일 아래쪽에 정의된 줄 단위 LCS diff. emitAlignedLines(블록 내부 줄 비교)에서
+// 재사용하기 위해 앞당겨 선언.
+static std::vector<DiffLine> ComputeDiff(
+	const std::vector<CString>& leftLines,
+	const std::vector<CString>& rightLines);
 
-	CString ta = a; ta.Trim();
-	CString tb = b; tb.Trim();
-
-	const bool bALeftEmpty = ta.IsEmpty();
-	const bool bBRightEmpty = tb.IsEmpty();
-
-	if (bALeftEmpty && bBRightEmpty)
-		return LineCompareResult::Same;       // 둘 다 사실상 빈 줄
-
-	if (bBRightEmpty)   // 오른쪽만 비어있음
-		return LineCompareResult::LeftOnly;
-
-	if (bALeftEmpty)    // 왼쪽만 비어있음
-		return LineCompareResult::RightOnly;
-
-	return LineCompareResult::Different;      // 둘 다 내용 있고 실제로 다름
-}
 // ★ 하위 섹션 대괄호(`[`)에 흔들리지 않고, 최상위 구분선(`========`) 기준으로만 블록을 쪼개는 파서
 std::vector<BinBlockUnit> ParseIntoBinBlocks(const std::vector<CString>& srcLines)
 {
@@ -106,7 +85,7 @@ std::vector<BinBlockUnit> ParseIntoBinBlocks(const std::vector<CString>& srcLine
 		}
 		else if (inBlock)
 		{
-			// 구분선 바로 다음 줄에 나오는 메인 이름(예: "[폐색 이름] 2A", "[ Station Information ]")을 블록의 고유 키로 지정
+			// 구분선 바로 다음 줄에 나오는 메인 명칭(예: "[폐색 명칭] 2A", "[ Station Information ]")을 블록의 고유 키로 지정
 			if (currentBlock.key.IsEmpty() && line.GetLength() > 0)
 			{
 				currentBlock.key = line;
@@ -270,48 +249,18 @@ static std::vector<DiffLine> ComputeBinDiff(
 	// 반드시 줄 단위로 다시 비교해서 진짜 다른 줄만 CHANGE로 표시한다.
 	// OP_MATCH(원래부터 key가 같아서 매칭된 블록)와 state==0(key 재매칭으로
 	// 짝지어진 "수정" 블록) 양쪽에서 공통으로 사용.
+	//
+	// [수정] 예전엔 lLines[k] vs rLines[k]처럼 같은 인덱스끼리만 비교했음.
+	// 비트 조건에 따라 한쪽에만 줄이 하나 더/덜 들어가는 경우
+	// (예: ConvertBlockInfoText의 DepRedKind bit0/bit1처럼 조건부로 줄을
+	// 개별 push하는 곳) 그 지점 이후 모든 줄이 한 칸씩 밀려서 실제로는
+	// 안 바뀐 줄까지 전부 CHANGE로 잘못 표시되는 문제가 있었음.
+	// 파일 상단의 줄 단위 LCS(ComputeDiff)를 재사용해서, 블록 내부도 실제
+	// 정렬을 찾아 비교하도록 함 (줄이 밀려도 정렬이 깨지지 않음).
 	auto emitAlignedLines = [&result](const std::vector<CString>& lLines, const std::vector<CString>& rLines)
 		{
-			size_t maxLine = (std::max)(lLines.size(), rLines.size());
-
-			for (size_t k = 0; k < maxLine; ++k)
-			{
-				bool bLHas = (k < lLines.size());
-				bool bRHas = (k < rLines.size());
-
-				if (bLHas && bRHas)
-				{
-					switch (CompareLineForDiff(lLines[k], rLines[k]))
-					{
-					case LineCompareResult::Same:
-						result.push_back({ DIFF_MATCH, lLines[k], rLines[k] });
-						break;
-					case LineCompareResult::LeftOnly:
-						// 오른쪽 값이 비어있음 -> 삭제로 표시 (오른쪽은 빈 칸)
-						result.push_back({ DIFF_DELETE, lLines[k], CString() });
-						break;
-					case LineCompareResult::RightOnly:
-						// 왼쪽 값이 비어있음 -> 추가로 표시 (왼쪽은 빈 칸)
-						result.push_back({ DIFF_INSERT, CString(), rLines[k] });
-						break;
-					case LineCompareResult::Different:
-					default:
-						// 실제로 둘 다 내용이 있고 서로 다른 줄만 진짜 "수정"
-						result.push_back({ DIFF_CHANGE, lLines[k], rLines[k] });
-						break;
-					}
-				}
-				else if (bLHas)
-				{
-					// 왼쪽 블록 줄 수가 더 많은 경우, 넘치는 줄이 누락되지 않도록 삭제로 채움
-					result.push_back({ DIFF_DELETE, lLines[k], CString() });
-				}
-				else
-				{
-					// 오른쪽 블록 줄 수가 더 많은 경우, 넘치는 줄을 추가로 채움
-					result.push_back({ DIFF_INSERT, CString(), rLines[k] });
-				}
-			}
+			std::vector<DiffLine> aligned = ComputeDiff(lLines, rLines);
+			result.insert(result.end(), aligned.begin(), aligned.end());
 		};
 
 	// 수정(state==0) 쌍은 DELETE/INSERT 어느 쪽을 먼저 만나든
@@ -2646,9 +2595,6 @@ std::vector<CString> DiffCompareFrame::ConvertStationInfoText(StationInfoType st
 	temp.Format(_T(" - ATO/TWC 정류기 수 : %d"), stn.AcrCntAto); lines.push_back(temp);
 	temp.Format(_T(" - 속도코드 정류기 수 : %d"), stn.AcrCntTs); lines.push_back(temp);
 
-	// 5. 비상정지 정보 배열 파싱 (모든 인덱스 고정 순회)
-	// [구조체 변경] EmgStop 에는 Output(IO_Position) 필드가 없음. EmgOut(bit0=출력있음,bit1=상하선겸용)
-	//              플래그를 사용하도록 수정하고, 구조체엔 있으나 빠져있던 TrackNo[] 배열을 추가함
 	lines.push_back(_T("")); // 여백 줄 분리
 	lines.push_back(_T("--- [비상정지 정보] ---"));
 	for (int i = 0; i < MAX_EMG_STOP; ++i)
@@ -2660,7 +2606,7 @@ std::vector<CString> DiffCompareFrame::ConvertStationInfoText(StationInfoType st
 			nameStr.Trim();
 			if (nameStr.IsEmpty()) nameStr = _T("(없음)");
 
-			temp.Format(_T(" - 비상정지[%d][%s] 이름 : %s"), i, (LPCTSTR)dirStr, (LPCTSTR)nameStr);
+			temp.Format(_T(" - 비상정지[%d][%s] 명칭 : %s"), i, (LPCTSTR)dirStr, (LPCTSTR)nameStr);
 			lines.push_back(temp);
 
 			CString arrSigs = GetDBNameByArray(stn.EmgStop[i][dir].ArrSignal, SignalIdx);
@@ -2708,13 +2654,13 @@ std::vector<CString> DiffCompareFrame::ConvertStationInfoText(StationInfoType st
 	return lines;
 }
 
-// bIsOrigin이 true이면 원본(Origin), false이면 비교군(Diff) 데이터에서 이름을 조회합니다.
+// bIsOrigin이 true이면 원본(Origin), false이면 비교군(Diff) 데이터에서 명칭을 조회합니다.
 std::vector<CString> DiffCompareFrame::ConvertTrackInfoText(const std::span<TrackInfoType>& trackList, bool bIsOrigin)
 {
 	std::vector<CString> lines;
 	CString temp;
 
-	// [이름 조회 람다] bIsOrigin 플래그에 맞춰 올바른 CommonUtil 함수를 호출합니다.
+	// [명칭 조회 람다] bIsOrigin 플래그에 맞춰 올바른 CommonUtil 함수를 호출합니다.
 	auto GetDBName = [&](BYTE nNum, GetDBNameByNum num) -> CString {
 		if (bIsOrigin) {
 			return CommonUtil::GetOriginNameByNumber(nNum, num);
@@ -2724,7 +2670,7 @@ std::vector<CString> DiffCompareFrame::ConvertTrackInfoText(const std::span<Trac
 		}
 		};
 
-	// [안전한 궤도 이름 조회 람다] (현재 순회 중인 궤도 리스트 기준)
+	// [안전한 궤도 명칭 조회 람다] (현재 순회 중인 궤도 리스트 기준)
 	auto GetSafeTrackName = [&](BYTE trackIdx) -> CString {
 		if (trackIdx == 0 || trackIdx == 0xFF || trackIdx >= trackList.size()) {
 			return _T("-");
@@ -2738,10 +2684,10 @@ std::vector<CString> DiffCompareFrame::ConvertTrackInfoText(const std::span<Trac
 		// 유효하지 않은(비어있는) 궤도는 건너뜁니다.
 		if (track.Name[0] == 0 || track.Name[0] == 0xFF) continue;
 
-		// 1. 기본 정보 (궤도 이름)
+		// 1. 기본 정보 (궤도 명칭)
 		lines.push_back(_T("========================================"));
 		CString trackName = GetSafeString(track.Name, 20);
-		temp.Format(_T("[궤도 이름] %s"), (LPCTSTR)trackName);
+		temp.Format(_T("[궤도 명칭] %s"), (LPCTSTR)trackName);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 
@@ -3014,10 +2960,10 @@ std::vector<CString> DiffCompareFrame::ConvertSignalInfoText(const std::span<Sig
 		// 유효하지 않은(비어있는) 신호기는 건너뜁니다.
 		if (signal.Name[0] == 0 || signal.Name[0] == 0xFF) continue;
 
-		// 1. 기본 정보 (신호기 이름)
+		// 1. 기본 정보 (신호기 명칭)
 		lines.push_back(_T("========================================"));
 		CString sigName = GetSafeString(signal.Name, 20);
-		temp.Format(_T("[신호기 이름] %s"), (LPCTSTR)sigName);
+		temp.Format(_T("[신호기 명칭] %s"), (LPCTSTR)sigName);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 
@@ -3058,7 +3004,7 @@ std::vector<CString> DiffCompareFrame::ConvertSignalInfoText(const std::span<Sig
 		temp.Format(_T("  - 진로 수 (NoOfRoute): %d, 현시 수 (NoOfLight): %d"), signal.NoOfRoute, signal.NoOfLight);
 		lines.push_back(temp);
 
-		// 4. 관련 궤도 및 연계 신호기 번호 (CommonUtil 이름 자동 조회 적용)
+		// 4. 관련 궤도 및 연계 신호기 번호 (CommonUtil 명칭 자동 조회 적용)
 		lines.push_back(_T("[관련 설비 및 번호]"));
 		CString trackName = GetDBName(signal.TrackNo, TrackIdx);
 		CString repeatSigName = GetDBName(signal.RepeatSigNo, SignalIdx);
@@ -3149,10 +3095,10 @@ std::vector<CString> DiffCompareFrame::ConvertSwitchInfoText(const std::span<Swi
 		// 유효하지 않은(비어있는) 선로전환기는 건너뜁니다.
 		if (sw.Name[0] == 0 || sw.Name[0] == 0xFF) continue;
 
-		// 1. 기본 정보 (선로전환기 이름)
+		// 1. 기본 정보 (선로전환기 명칭)
 		lines.push_back(_T("========================================"));
 		CString swName = GetSafeString(sw.Name, 20);
-		temp.Format(_T("[선로전환기 이름] %s"), (LPCTSTR)swName);
+		temp.Format(_T("[선로전환기 명칭] %s"), (LPCTSTR)swName);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 
@@ -3338,12 +3284,17 @@ std::vector<CString> DiffCompareFrame::ConvertBlockInfoText(const std::span<Bloc
 		// 유효하지 않은(비어있는) 폐색은 건너뜁니다.
 		if (blk.Name[0] == 0 || blk.Name[0] == 0xFF) continue;
 
-		// 1. 기본 정보 (폐색 이름)
+		// 1. 기본 정보 (폐색 명칭)
 		lines.push_back(_T("========================================"));
 		CString blkName = GetSafeString(blk.Name, 20);
-		temp.Format(_T("[폐색 이름] %s"), (LPCTSTR)blkName);
+		temp.Format(_T("[폐색 명칭] %s"), (LPCTSTR)blkName);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
+
+		// [추가] BlkKind(폐색 종류)는 BlockAspect(현시 수)와 조합해야 실제 신호 입력 명칭이
+		// 정해지므로, 맨 앞에서 먼저 표시 (BitUtility.h의 DescribeBlkKind_Aspect 사용)
+		temp.Format(_T("[폐색 종류] %s"), (LPCTSTR)DescribeBlkKind_Aspect(blk.BlkKind, blk.BlockAspect));
+		lines.push_back(temp);
 
 		lines.push_back(_T("[폐색 종류 및 옵션]"));
 
@@ -3355,19 +3306,24 @@ std::vector<CString> DiffCompareFrame::ConvertBlockInfoText(const std::span<Bloc
 				kindOptions += desc;
 			}
 			};
+		// BitUtility.h의 namespace 전용 함수(DescribeRevStartRed 등)가 반환한 문자열을
+		// kindOptions에 합쳐주는 헬퍼. 켜진 비트가 없으면 빈 문자열이 오므로 그대로 건너뜀.
+		auto appendKindText = [&](const CString& text) {
+			if (text.IsEmpty()) return;
+			if (!kindOptions.IsEmpty()) kindOptions += _T(", ");
+			kindOptions += text;
+			};
 		// [구조체 변경] .Value 제거. ExpBlk/MetroRev/JeonlaRev 는 KindInfo 에 없는 필드이며,
 		//              실제로는 KindInfo.RevKind 의 bit0(서울교통 3,4호선 역방향)/bit1(전라선 양방향)임.
 		//              RevStartRed/RevArrSig 는 KindInfo 가 아니라 BlockBOthInfo 하위 필드로 재구성됨.
 		//              OutKind bit2 로 쓰던 값은 실제로 BlockBOthInfo.DepSig(bit0)임
+
 		appendKind(IsBitSet(blk.KindInfo.RevKind, 0), _T("서울교통 3,4호선 역방향 폐색"));
 		appendKind(IsBitSet(blk.KindInfo.RevKind, 1), _T("전라선 양방향 폐색 (0:경부선 양방향 폐색)"));
-		appendKind(IsBitSet(blk.BlockBOthInfo.RevStartRed, 0), _T("역방향 출발시(내방궤도 점유) 폐색 적색 표시"));
-		appendKind(IsBitSet(blk.BlockBOthInfo.RevStartRed, 1), _T("역방향 출발 폐색 적색 표시(점멸 없음)"));
-		appendKind(IsBitSet(blk.KindInfo.OutKind, 0), _T("BR, DR 모두 여자시 출발신호 진행(단선자동 3현시)"));
-		appendKind(IsBitSet(blk.KindInfo.OutKind, 1), _T("BR, DR 모두 여자시 출발신호 주의(단선자동 3현시)"));
+		appendKindText(DescribeRevStartRed(blk.BlockBOthInfo.RevStartRed));
+		appendKindText(DescribeOutKind(blk.KindInfo.OutKind));
 		appendKind(IsBitSet(blk.BlockBOthInfo.DepSig, 0), _T("폐색 YY 여자 또는 진로 착점궤도 여자시 출발신호 현시(4현시)"));
-		appendKind(IsBitSet(blk.BlockBOthInfo.RevArrSig, 0), _T("양방향 폐색(정방향장내&&역방향출발) 제어 제한"));
-		appendKind(IsBitSet(blk.BlockBOthInfo.RevArrSig, 1), _T("양방향 폐색(정방향출발&&역방향장내) 제어 제한"));
+		appendKindText(DescribeRevArrSig(blk.BlockBOthInfo.RevArrSig));
 		// [추가] DispKind (구조체엔 있으나 기존 코드에 없던 필드)
 		appendKind(IsBitSet(blk.KindInfo.DispKind, 0), _T("출발/정방향 개통표시등 있음(화면표시)"));
 		appendKind(IsBitSet(blk.KindInfo.DispKind, 1), _T("양방향폐색 출발 적색점멸 있음(출발RF)"));
@@ -3375,19 +3331,18 @@ std::vector<CString> DiffCompareFrame::ConvertBlockInfoText(const std::span<Bloc
 		appendKind(IsBitSet(blk.KindInfo.DispKind, 3), _T("양방향폐색 장내 적색점멸 있음(장내RF)"));
 		appendKind(IsBitSet(blk.KindInfo.DispKind, 4), _T("양방향폐색 장내 황색점멸 있음(장내YF)"));
 
-		// 설정된 옵션이 하나도 없을 경우의 처리
-		if (kindOptions.IsEmpty()) {
-			kindOptions = _T("없음");
+		// 설정된 옵션이 하나도 없으면 "없음"을 찍지 않고 줄 자체를 생략, 있는 것만 출력
+		if (!kindOptions.IsEmpty()) {
+			CString finalLine;
+			finalLine.Format(_T("  - %s"), (LPCTSTR)kindOptions);
+			lines.push_back(finalLine);
 		}
-		CString finalLine;
-		finalLine.Format(_T("  - %s"), (LPCTSTR)kindOptions);
-		lines.push_back(finalLine);
 
 		// 3. 폐색 구분 및 연계 번호
 		lines.push_back(_T("[폐색 구분 및 관련 설비]"));
 
 
-		CString dirStr = _T("없음");
+		CString dirStr = _T("");
 		if (blk.DirKind == 1) dirStr = _T("장내");
 		else if (blk.DirKind == 2) dirStr = _T("출발");
 		temp.Format(_T("  - 폐색 구분 (DirKind): %d (%s)"), blk.DirKind, (LPCTSTR)dirStr);
@@ -3490,6 +3445,34 @@ std::vector<CString> DiffCompareFrame::ConvertBlockInfoText(const std::span<Bloc
 			lines.push_back(temp);
 		}
 
+		// 7. 출력 조건 (BlockCond) - 출력 구분(Gubun)과 포트(OutPort).
+		// DeviceGridInfo::GetBlockInfoString의 [출력 포트] 디코딩과 동일한 방식.
+		// 켜진 조건이 하나도 없으면 섹션 자체를 생략 (있는 것만 출력).
+		std::vector<CString> condLines;
+		for (int i = 0; i < MAX_BLOCK_COND; ++i)
+		{
+			const auto& cond = blk.BlockCond[i];
+			if (cond.Gubun == 0) continue; // 미사용 조건은 건너뜀
+
+			CString strLabel;
+			switch (cond.Gubun)
+			{
+			case 'C': strLabel = _T("CNR");    break; // 출력 CNR
+			case 'R': strLabel = _T("RR(ZR)"); break; // 출력 RR(ZR)
+			case 'E': strLabel = _T("기타");    break; // 기타 출력
+			default:  strLabel.Format(_T("%c"), cond.Gubun); break;
+			}
+
+			CString condLine;
+			condLine.Format(_T("  - [%s] 출력 포트: %s"), (LPCTSTR)strLabel, (LPCTSTR)GetSafeIOPosition(cond.OutPort));
+			condLines.push_back(condLine);
+		}
+		if (!condLines.empty())
+		{
+			lines.push_back(_T("[폐색 출력 조건]"));
+			lines.insert(lines.end(), condLines.begin(), condLines.end());
+		}
+
 		// 폐색 데이터 간 여백 추가
 		lines.push_back(_T(""));
 	}
@@ -3575,7 +3558,7 @@ std::vector<CString> DiffCompareFrame::ConvertLevelCrossInfoText(const std::span
 		if (item.Name[0] == 0 || item.Name[0] == 0xFF) continue;
 		lines.push_back(_T("========================================"));
 		CString name = GetSafeString(item.Name, 20);
-		temp.Format(_T("[건널목 정보 이름] %s"), (LPCTSTR)name);
+		temp.Format(_T("[건널목 정보 명칭] %s"), (LPCTSTR)name);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 		lines.push_back(_T(""));
@@ -3594,26 +3577,26 @@ std::vector<CString> DiffCompareFrame::ConvertDeadSectionInfoText(const std::spa
 		if (item.Name[0] == 0 || item.Name[0] == 0xFF) continue;
 		lines.push_back(_T("========================================"));
 		CString name = GetSafeString(item.Name, 20);
-		temp.Format(_T("[절연구간 이름] %s"), (LPCTSTR)name);
+		temp.Format(_T("[절연구간 명칭] %s"), (LPCTSTR)name);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 
 		CString unit1Name = GetSafeString(item.Unit1.Name, 10);
 		if (!unit1Name.IsEmpty())
 		{
-			temp.Format(_T("  - 1계 이름 (Unit1): %s"), (LPCTSTR)unit1Name);
+			temp.Format(_T("  - 1계 명칭 (Unit1): %s"), (LPCTSTR)unit1Name);
 			lines.push_back(temp);
 		}
 		CString unit2Name = GetSafeString(item.Unit2.Name, 10);
 		if (!unit2Name.IsEmpty())
 		{
-			temp.Format(_T("  - 2계 이름 (Unit2): %s"), (LPCTSTR)unit2Name);
+			temp.Format(_T("  - 2계 명칭 (Unit2): %s"), (LPCTSTR)unit2Name);
 			lines.push_back(temp);
 		}
 		CString unitActName = GetSafeString(item.Unit_Act.Name, 10);
 		if (!unitActName.IsEmpty())
 		{
-			temp.Format(_T("  - 운용 이름 (Unit_Act, 여자:1계 주계/낙하:2계 주계): %s"), (LPCTSTR)unitActName);
+			temp.Format(_T("  - 운용 ( 여자:1계 주계 / 낙하:2계 주계): %s"), (LPCTSTR)unitActName);
 			lines.push_back(temp);
 		}
 		lines.push_back(_T(""));
@@ -3622,7 +3605,7 @@ std::vector<CString> DiffCompareFrame::ConvertDeadSectionInfoText(const std::spa
 }
 
 // 3. 지장물 정보 텍스트 변환
-// [구조체 변경] type/Input(IO_Position) 필드는 삭제되고, FallLock/Proc 하위 Name 으로 구조 변경됨
+
 // Release 는 구조체 주석상 "규격변경 이후 삭제(사용하지 않음)" 이므로 표시하지 않음
 std::vector<CString> DiffCompareFrame::ConvertFallLockInfoText(const std::span<FallLockInfoType>& list, bool bIsOrigin)
 {
@@ -3633,21 +3616,21 @@ std::vector<CString> DiffCompareFrame::ConvertFallLockInfoText(const std::span<F
 		if (item.Name[0] == 0 || item.Name[0] == 0xFF) continue;
 		lines.push_back(_T("========================================"));
 		CString name = GetSafeString(item.Name, 20);
-		temp.Format(_T("[지장물 이름] %s"), (LPCTSTR)name);
+		temp.Format(_T("[지장물 명칭] %s"), (LPCTSTR)name);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 
 		CString fallLockName = GetSafeString(item.FallLock.Name, 20);
 		if (!fallLockName.IsEmpty())
 		{
-			temp.Format(_T("  - 낙석 이름 (FallLock): %s"), (LPCTSTR)fallLockName);
+			temp.Format(_T("  - 낙석 명칭 (FallLock): %s"), (LPCTSTR)fallLockName);
 			lines.push_back(temp);
 		}
 		CString procName1 = GetSafeString(item.Proc.Name1, 15);
 		CString procName2 = GetSafeString(item.Proc.Name2, 15);
 		if (!procName1.IsEmpty() || !procName2.IsEmpty())
 		{
-			temp.Format(_T("  - 보호 이름 (Proc): %s / %s"), (LPCTSTR)procName1, (LPCTSTR)procName2);
+			temp.Format(_T("  - 보호 명칭 (Proc): %s / %s"), (LPCTSTR)procName1, (LPCTSTR)procName2);
 			lines.push_back(temp);
 		}
 		lines.push_back(_T(""));
@@ -3656,7 +3639,7 @@ std::vector<CString> DiffCompareFrame::ConvertFallLockInfoText(const std::span<F
 }
 
 // 4. 출발반응등 정보 텍스트 변환
-// [구조체 변경] InputStl/OutputStl 필드는 삭제됨 (현재 Name 만 존재)
+
 std::vector<CString> DiffCompareFrame::ConvertSTLInfoText(const std::span<STLInfoType>& list, bool bIsOrigin)
 {
 	std::vector<CString> lines;
@@ -3666,7 +3649,7 @@ std::vector<CString> DiffCompareFrame::ConvertSTLInfoText(const std::span<STLInf
 		if (item.Name[0] == 0 || item.Name[0] == 0xFF) continue;
 		lines.push_back(_T("========================================"));
 		CString name = GetSafeString(item.Name, 20);
-		temp.Format(_T("[출발반응등 이름] %s"), (LPCTSTR)name);
+		temp.Format(_T("[출발반응등 명칭] %s"), (LPCTSTR)name);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 		lines.push_back(_T(""));
@@ -3675,7 +3658,7 @@ std::vector<CString> DiffCompareFrame::ConvertSTLInfoText(const std::span<STLInf
 }
 
 // 5. 기타 고장 정보 텍스트 변환
-// [구조체 변경] InputFault(IO_Position) 필드는 삭제됨
+
 std::vector<CString> DiffCompareFrame::ConvertFaultInfoText(const std::span<FaultInfoType>& list, bool bIsOrigin)
 {
 	std::vector<CString> lines;
@@ -3685,16 +3668,27 @@ std::vector<CString> DiffCompareFrame::ConvertFaultInfoText(const std::span<Faul
 		if (item.Name[0] == 0 || item.Name[0] == 0xFF) continue;
 		lines.push_back(_T("========================================"));
 		CString name = GetSafeString(item.Name, 20);
-		temp.Format(_T("[기타 고장 정보 이름] %s"), (LPCTSTR)name);
+		temp.Format(_T("[기타 고장 정보 명칭] %s"), (LPCTSTR)name);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 
 		CString typeStr = (item.Type == 1) ? _T("출발대용표시등") : _T("기타");
-		temp.Format(_T("  - 타입: %d (%s), 화면 숨김(Hide): %d"), item.Type, (LPCTSTR)typeStr, item.Hide);
+		CString hideStr = (item.Hide == 1) ? _T("화면 숨김") : _T("화면 표시");
+		temp.Format(_T("  - 타입: (%s), 화면 숨김(Hide): %s"), (LPCTSTR)typeStr, item.Hide);
 		lines.push_back(temp);
 		lines.push_back(_T(""));
 	}
 	return lines;
+}
+
+std::vector<CString> DiffCompareFrame::ConvertSOInfoText(const std::span<SlowOrderInfoType>& list, bool)
+{
+	return std::vector<CString>();
+}
+
+std::vector<CString> DiffCompareFrame::ConvertAttrInfoText(const std::span<AttractionInfoType>& list, bool)
+{
+	return std::vector<CString>();
 }
 
 // 6. 히터 정보 텍스트 변환
@@ -3708,7 +3702,7 @@ std::vector<CString> DiffCompareFrame::ConvertHeatInfoText(const std::span<HeatI
 		if (item.szHeatName[0] == 0 || item.szHeatName[0] == 0xFF) continue;
 		lines.push_back(_T("========================================"));
 		CString heatName = GetSafeString(item.szHeatName, 10);
-		temp.Format(_T("[Heater 이름] %s"), (LPCTSTR)heatName);
+		temp.Format(_T("[Heater 명칭] %s"), (LPCTSTR)heatName);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 
@@ -3816,7 +3810,7 @@ std::vector<CString> DiffCompareFrame::ConvertInterlockInfoText(const std::span<
 
 		// 1. 블록 헤더 (LCS 매칭의 고유 키)
 		lines.push_back(_T("========================================"));
-		temp.Format(_T("[연동진로 이름] %s"), (LPCTSTR)routeName);
+		temp.Format(_T("[연동진로 명칭] %s"), (LPCTSTR)routeName);
 		lines.push_back(temp);
 		lines.push_back(_T("------------------------------------------------"));
 
@@ -4251,12 +4245,12 @@ std::vector<CString> DiffCompareFrame::ConvertCPTInfoText(const std::span<CPTInf
 		lines.push_back(_T("========================================"));
 		// char 배열이므로 명시적으로 CString 변환
 		CString cptName = CString(item.CptName, 20).Trim();
-		temp.Format(_T("[CPT 정보] 이름: %s (CPT 번호: %d)"), (LPCTSTR)cptName, item.CptNo);
+		temp.Format(_T("[CPT 정보] 명칭: %s (CPT 번호: %d)"), (LPCTSTR)cptName, item.CptNo);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 
 		// [버그 수정] CptKind 는 bit0(출발용)/bit1(장내용) 비트플래그임
-		CString kindStr = _T("알 수 없음");
+		CString kindStr = _T("");
 		if (IsBitSet(item.CptKind, 0)) kindStr = _T("출발용 (신호기 점멸 표시)");
 		else if (IsBitSet(item.CptKind, 1)) kindStr = _T("장내용 (궤도 점유 표시, 비장애/비점멸)");
 
@@ -4308,7 +4302,7 @@ std::vector<CString> DiffCompareFrame::ConvertDwellInfoText(const std::span<Dwel
 
 		lines.push_back(_T("========================================"));
 		CString subStnName = GetSafeString(item.SubStnName, 20);
-		temp.Format(_T("[소속역(Dwell) 정보] 역 이름: %s (역 번호: %d, 플랫폼 번호: %d)"),
+		temp.Format(_T("[소속역(Dwell) 정보] 역 명칭: %s (역 번호: %d, 플랫폼 번호: %d)"),
 			(LPCTSTR)subStnName, item.SubStnNo, item.PlatFormNo);
 		lines.push_back(temp);
 		lines.push_back(_T("------------------------------------------------"));
@@ -4353,12 +4347,18 @@ std::vector<CString> DiffCompareFrame::ConvertDwellInfoText(const std::span<Dwel
 			{
 				CString trkName = GetDBName(item.EmgTrack[i], TrackIdx);
 				CString sub;
-				sub.Format(_T("[%d: %s] "), item.EmgTrack[i], (LPCTSTR)trkName);
+				sub.Format(_T("[%s] "), (LPCTSTR)trkName);
+				if (!emgListStr.IsEmpty())
+				{
+					emgListStr += _T(", ");
+				}
 				emgListStr += sub;
 			}
 		}
 		if (emgListStr.IsEmpty()) emgListStr = _T("-");
+
 		temp.Format(_T("  - 비상정지 설정 궤도: %s"), (LPCTSTR)emgListStr);
+
 		lines.push_back(temp);
 
 		lines.push_back(_T(""));
@@ -4515,7 +4515,7 @@ std::vector<CString> DiffCompareFrame::ConvertSignalCardInfoText(const std::span
 			CString tagName = GetSafeString(item.TagName, 20);
 			tagName.Trim();
 			CString sigName = GetDBName(item.Idx, SignalIdx);
-			temp.Format(_T("  - 포트(%d) 이름: %s, 표찰: %s, Table Index: %d(%s)"), item.PortNo, (LPCTSTR)name, (LPCTSTR)tagName, item.Idx, (LPCTSTR)sigName);
+			temp.Format(_T("  - 포트(%d) 명칭: %s, 표찰: %s, Table Index: %d(%s)"), item.PortNo, (LPCTSTR)name, (LPCTSTR)tagName, item.Idx, (LPCTSTR)sigName);
 			lines.push_back(temp);
 		}
 		if (bHasPort) lines.push_back(_T(""));
@@ -4564,7 +4564,7 @@ std::vector<CString> DiffCompareFrame::ConvertSwitchCardInfoText(const std::span
 			tagName.Trim();
 			CString swhName = GetDBName(item.Idx, SwitchIdx);
 			CString noseKindStr = (item.NoseKind == 'p') ? _T("첨단") : (item.NoseKind == 'f') ? _T("크로싱") : _T("");
-			temp.Format(_T("  - 포트(%d) 이름: %s, 표찰: %s, Table Index: %d(%s)"), item.PortNo, (LPCTSTR)name, (LPCTSTR)tagName, item.Idx, (LPCTSTR)swhName);
+			temp.Format(_T("  - 포트(%d) 명칭: %s, 표찰: %s, Table Index: %d(%s)"), item.PortNo, (LPCTSTR)name, (LPCTSTR)tagName, item.Idx, (LPCTSTR)swhName);
 			if (!noseKindStr.IsEmpty()) temp.AppendFormat(_T(", 노스구분: %s"), (LPCTSTR)noseKindStr);
 			lines.push_back(temp);
 		}
@@ -4658,18 +4658,18 @@ std::vector<CString> DiffCompareFrame::ConvertInCardInfoText(const std::span<IN_
 				bHasPort = true;
 			}
 
-			// 2. 포트 위치 및 이름
+			// 2. 포트 위치 및 명칭
 			CString name = GetSafeString(item.Name, 20);
 			name.Trim();
-			temp.Format(_T("  - 포트(%d) 이름: %s"), item.PortNo, (LPCTSTR)name);
+			temp.Format(_T("  - 포트(%d) 명칭: %s"), item.PortNo, (LPCTSTR)name);
 			lines.push_back(temp);
 
-			// 3. 비트 이름 및 표찰 이름
+			// 3. 비트 명칭 및 표찰 명칭
 			CString bitName = GetSafeString(item.BitName, 20);
 			bitName.Trim();
 			CString tagName = GetSafeString(item.TagName, 20);
 			tagName.Trim();
-			temp.Format(_T("    비트 이름: %s, 표찰 이름(TagName): %s"), (LPCTSTR)bitName, (LPCTSTR)tagName);
+			temp.Format(_T("    비트 명칭: %s, 표찰 명칭(TagName): %s"), (LPCTSTR)bitName, (LPCTSTR)tagName);
 			lines.push_back(temp);
 
 			// 4. 종류('T', 'S', 'P', 'L', 'N'), 인덱스, 비트 오프셋
@@ -4755,9 +4755,7 @@ void DiffCompareFrame::SetOutCardInfo()
 
 	ApplyCompareOrSingle(hasLeftData, hasRightData, leftLines, rightLines);
 }
-// [구조체 변경] OUTCARDTABLE -> OUT_CARDTABLE. Name/BitName/TagName/Kind/Idx/BitNo/PORTOUT 는 CardData[] 하위 포트별 필드로 재구성됨
-// [삭제] 기존 코드의 "궤도(Kind=='T') 속도코드 구분(BitNo->25/40/60/70/80/CAB/YD/YC)" 은 현재 구조체 어디에도 근거가 없어 삭제
-// [추가] 실제 존재하는 PORTOUT.OutKind/OutGubun 출력정보로 대체 (구조체엔 있으나 기존 코드에 없던 필드)
+
 std::vector<CString> DiffCompareFrame::ConvertOutCardInfoText(const std::span<OUT_CARDTABLE>& list, bool bIsOrigin)
 {
 	std::vector<CString> lines;
@@ -4785,18 +4783,18 @@ std::vector<CString> DiffCompareFrame::ConvertOutCardInfoText(const std::span<OU
 				bHasPort = true;
 			}
 
-			// 2. 포트 위치 및 이름
+			// 2. 포트 위치 및 명칭
 			CString name = GetSafeString(item.Name, 20);
 			name.Trim();
-			temp.Format(_T("  - 포트(%d) 이름: %s"), item.PortNo, (LPCTSTR)name);
+			temp.Format(_T("  - 포트(%d) 명칭: %s"), item.PortNo, (LPCTSTR)name);
 			lines.push_back(temp);
 
-			// 3. 비트 이름 및 표찰 이름
+			// 3. 비트 명칭 및 표찰 명칭
 			CString bitName = GetSafeString(item.BitName, 20);
 			bitName.Trim();
 			CString tagName = GetSafeString(item.TagName, 20);
 			tagName.Trim();
-			temp.Format(_T("    비트 이름: %s, 표찰 이름(TagName): %s"), (LPCTSTR)bitName, (LPCTSTR)tagName);
+			temp.Format(_T("    비트 명칭: %s, 표찰 명칭(TagName): %s"), (LPCTSTR)bitName, (LPCTSTR)tagName);
 			lines.push_back(temp);
 
 			// 4. 종류, 테이블 인덱스, 비트 오프셋
@@ -4858,7 +4856,7 @@ std::vector<CString> DiffCompareFrame::ConvertLogicInfoText(const std::span<std:
 	std::vector<CString> lines;
 	CString temp;
 
-	// 원본/비교군에 따라 CommonUtil을 통해 DB 연결 장비 이름을 가져오는 람다
+	// 원본/비교군에 따라 CommonUtil을 통해 DB 연결 장비 명칭을 가져오는 람다
 	auto GetDBName = [&](UCHAR kind, UINT tableIdx) -> CString {
 		GetDBNameByNum numType = GetDBNameByNum::TrackIdx;
 		if (kind == 'S' || kind == 's') numType = GetDBNameByNum::SignalIdx;
@@ -4877,7 +4875,7 @@ std::vector<CString> DiffCompareFrame::ConvertLogicInfoText(const std::span<std:
 
 	for (const auto& item : logicList)
 	{
-		// 유효하지 않은 데이터 건너뛰기 (이름 첫 바이트가 0이거나 0xFF인 경우)
+		// 유효하지 않은 데이터 건너뛰기 (명칭 첫 바이트가 0이거나 0xFF인 경우)
 		if (item->szVarName[0] == 0 || (unsigned char)item->szVarName[0] == 0xFF) continue;
 
 		CString varName = GetSafeString(item->szVarName, 46);
@@ -4885,7 +4883,7 @@ std::vector<CString> DiffCompareFrame::ConvertLogicInfoText(const std::span<std:
 
 		// 1. 블록 헤더 (BinDiff 매칭의 고유 키 역할)
 		lines.push_back(_T("========================================"));
-		temp.Format(_T("[로직정보] 이름:%s"), (LPCTSTR)varName);
+		temp.Format(_T("[로직정보] 명칭:%s"), (LPCTSTR)varName);
 		lines.push_back(temp);
 		lines.push_back(_T("----------------------------------------"));
 		temp.Format(_T("인덱스 : %d"), item->nLogicIdx);

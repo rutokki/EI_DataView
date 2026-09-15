@@ -115,12 +115,15 @@ void CDataViewExView::OnFilePrintPreview()
 {
 	auto Data = StructMainData::GetInstance().GetEIDBStruct();
 
+	// [TEMP-DEBUG] GridPrintDlg UI 확인용으로 이 가드를 잠시 꺼둡니다. 실제 로드된 파일이
+	// 없으면 여기서 바로 막혀서 OnPrintGridTable()의 더미데이터 코드까지 도달하지 못했습니다.
+	// UI 확인 끝나면 아래 if 블록의 주석을 풀어 원래대로 되돌리세요.
 	// 2. 데이터가 비어있는지 확인 (역 정보 ID 등이 0이거나 초기화 상태인 경우)
-	if (Data == nullptr)	 // 혹은 앞서 만든 IsEmpty() 함수 활용
-	{
-		BCGPMessageBox(_T("출력할 데이터가 없습니다. 먼저 파일을 열어 데이터를 로드해주세요."), MB_ICONWARNING | MB_OK);
-		return; // 인쇄 로직으로 진입하지 않고 안전하게 차단
-	}
+	//if (Data == nullptr)	 // 혹은 앞서 만든 IsEmpty() 함수 활용
+	//{
+	//	BCGPMessageBox(_T("출력할 데이터가 없습니다. 먼저 파일을 열어 데이터를 로드해주세요."), MB_ICONWARNING | MB_OK);
+	//	return; // 인쇄 로직으로 진입하지 않고 안전하게 차단
+	//}
 
 	OnPrintGridTable();
 }
@@ -945,12 +948,33 @@ void CDataViewExView::OnPrintGridTable()
 	// 7. 지역 변수 rows 대신 다이얼로그 내부 멤버(pDlg->m_rows)에 직접 데이터 추출
 	if (!ExtractGridData(pGrid, headers, pDlg->m_rows))
 	{
-		AfxMessageBox(_T("그리드에 인쇄할 데이터가 없습니다."));
-		return;
+		// [TEMP-DEBUG] 실제 DB 데이터가 없어도 GridPrintDlg UI(버튼 배치/폰트 등)를 확인할 수 있게
+		// 더미 데이터를 채워서 계속 진행합니다. UI 확인이 끝나면 이 블록을 지우고 원래대로
+		// (AfxMessageBox + return) 되돌리세요.
+		FillDummyRowsForPrintPreview(pDlg->m_columnInfos, pDlg->m_rows);
 	}
 
 	// 8. 모달 다이얼로그 실행
 	pDlg->DoModal();
+}
+// [TEMP-DEBUG] GridPrintDlg UI 확인용 더미 데이터 생성 함수. 확인 끝나면 OnPrintGridTable의
+// 호출부와 함께 이 함수도 삭제하세요.
+void CDataViewExView::FillDummyRowsForPrintPreview(const std::vector<ColumnInfo>& columnInfos, std::vector<std::vector<CString>>& rows)
+{
+	rows.clear();
+	const int nDummyRowCount = 12;
+	for (int r = 0; r < nDummyRowCount; ++r)
+	{
+		std::vector<CString> row;
+		row.reserve(columnInfos.size());
+		for (size_t c = 0; c < columnInfos.size(); ++c)
+		{
+			CString cell;
+			cell.Format(_T("샘플%d-%d"), r + 1, (int)c + 1);
+			row.push_back(cell);
+		}
+		rows.push_back(row);
+	}
 }
 bool CDataViewExView::ExtractGridData(CBCGPGridCtrl* pGrid, const std::vector<CString>& headers, std::vector<std::vector<CString>>& rows)
 {

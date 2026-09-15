@@ -10,26 +10,90 @@ inline bool IsBitSet(BYTE val, int bitIndex)
 	return (val & (1 << bitIndex)) != 0;
 }
 
+namespace BlockInfo_BlkKind
+{
+	constexpr BYTE DoubleAuto_5Aspect = 0x01;  // 복선자동 5현시(YY, Y, YG) 1
+	constexpr BYTE SingleAuto_3Aspect = 0x02;  // 단선자동 3현시(BR, DR) 2
+	constexpr BYTE DoubleInterlocking = 0x03;  // 복선연동 3
+	constexpr BYTE SingleInterlocking = 0x04;  // 단선연동 4
+	constexpr BYTE TokenBlock = 0x05;  // 통표 폐색 5
+	constexpr BYTE SubwayBlock = 0x06;  // 지하철 폐색 6
+	constexpr BYTE DaeyaBlock = 0x07;  // 대야   폐색 7
+	constexpr BYTE UiwangBlock = 0x08;  // 의왕   폐색 8
+	constexpr BYTE TriangleBlock = 0x09;  // 삼각선 폐색 9
+	constexpr BYTE Cheongnyangni_Mangu = 0x0A; // 청량리 - 망우 10
+	constexpr BYTE BiDirectional = 0x0B; // 양방향 폐색       (정방향출발 && 역방향장내) 11
+	constexpr BYTE BiDirectional_3Aspect = 0x0C; // 양방향 폐색 3현시 (정방향장내 && 역방향출발)(BR, DR) 12
 
-//namespace BlockInfo_BlkKind
-//{
-//	constexpr BYTE DoubleAuto_5Aspect = 0x01;  // 복선자동 5현시(YY, Y, YG) 1
-//	constexpr BYTE SingleAuto_3Aspect = 0x02;  // 단선자동 3현시(BR, DR) 2
-//	constexpr BYTE DoubleInterlocking = 0x03;  // 복선연동 3
-//	constexpr BYTE SingleInterlocking = 0x04;  // 단선연동 4
-//	constexpr BYTE TokenBlock = 0x05;  // 통표 폐색 5
-//	constexpr BYTE SubwayBlock = 0x06;  // 지하철 폐색 6
-//	constexpr BYTE DaeyaBlock = 0x07;  // 대야   폐색 7
-//	constexpr BYTE UiwangBlock = 0x08;  // 의왕   폐색 8
-//	constexpr BYTE TriangleBlock = 0x09;  // 삼각선 폐색 9
-//	constexpr BYTE Cheongnyangni_Mangu = 0x0A; // 청량리 - 망우 10
-//	constexpr BYTE BiDirectional = 0x0B; // 양방향 폐색       (정방향출발 && 역방향장내) 11
-//	constexpr BYTE BiDirectional_3Aspect = 0x0C; // 양방향 폐색 3현시 (정방향장내 && 역방향출발)(BR, DR) 12
-//	constexpr BYTE SingleAuto_5Aspect_NoDR = 0x0D; // 단선자동 5현시 - DR 없음 13
-//	constexpr BYTE BiDirectional_5Aspect_NoDR = 0x0E; // 양방향 폐색 5현시 (정방향장내 && 역방향출발) - DR 없음 14
-//	constexpr BYTE DoubleAuto_3Aspect = 0x0F; // 복선자동 3현시(Y) 15
-//	constexpr BYTE HighSpeedBlock = 0x10; // 고속선 폐색 16
-//}
+	constexpr BYTE HighSpeedBlock = 0x10; // 고속선 폐색 16
+}
+
+namespace BlockInfo_BlockAspect
+{
+	constexpr BYTE Aspect2 = 0x02;
+	constexpr BYTE Aspect3 = 0x03;
+	constexpr BYTE Aspect4 = 0x04;
+	constexpr BYTE Aspect5 = 0x05;
+}
+
+// BlockInfo_BlkKind 설명 문자열 반환. 비트 플래그가 아니라 값 하나로 종류가 정해지는
+// 코드라서 switch로 값을 직접 매칭함 (값 하나만 넘기면 됨).
+inline CString DescribeBlkKind_Aspect(BYTE kind, BYTE aspect)
+{
+	switch (kind)
+	{
+	case BlockInfo_BlkKind::DoubleAuto_5Aspect:   //복선 자동 5현시
+		switch (aspect)
+		{
+		case BlockInfo_BlockAspect::Aspect3: return _T("복선자동 3현시 Y");
+		default: return _T("복선자동 5현시 YY,Y,YG");
+		}
+	case BlockInfo_BlkKind::SingleAuto_3Aspect:
+		switch (aspect)
+		{
+		case BlockInfo_BlockAspect::Aspect5: return _T("단선자동 5현시 BR, YY, Y, G");
+		default: return _T("단선자동 3현시 BR , DR");
+		}
+	case BlockInfo_BlkKind::DoubleInterlocking:          return _T("복선연동");
+	case BlockInfo_BlkKind::SingleInterlocking:          return _T("단선연동");
+	case BlockInfo_BlkKind::TokenBlock:                  return _T("통표 폐색");
+	case BlockInfo_BlkKind::SubwayBlock:                 return _T("지하철 폐색");
+	case BlockInfo_BlkKind::DaeyaBlock:                  return _T("대야 폐색");
+	case BlockInfo_BlkKind::UiwangBlock:
+		switch (aspect)
+		{
+		case BlockInfo_BlockAspect::Aspect3: return _T("의왕 폐색 3현시 HR, EHR, TR, TPSR, eHR");
+		case BlockInfo_BlockAspect::Aspect4:return _T("의왕 폐색 4현시 HR, EHR, TR, TPSR");
+		default:return _T("의왕 폐색 5현시 HR, EHR, TR, TPSR");
+		}
+	case BlockInfo_BlkKind::TriangleBlock:               return _T("삼각선 폐색");
+	case BlockInfo_BlkKind::Cheongnyangni_Mangu:         return _T("청량리 - 망우");
+	case BlockInfo_BlkKind::BiDirectional:               return _T("양방향 폐색 (정방향출발 && 역방향장내)");
+	case BlockInfo_BlkKind::BiDirectional_3Aspect:
+		switch (aspect)
+		{
+		case BlockInfo_BlockAspect::Aspect5: return _T("양방향 폐색 3현시(정방향장내 && 역방향출발) BR");
+		default:return _T("양방향 폐색 5현시 (정방향장내 && 역방향출발) BR,DR");
+		}
+	case BlockInfo_BlkKind::HighSpeedBlock:              return _T("고속선 폐색");
+	default:                                             return _T("미정의 폐색 종류");
+	}
+}
+
+// BlockInfo_BlockAspect 설명 문자열 반환. 값 하나로 현시 수가 정해지는 코드라
+// switch로 값을 직접 매칭함 (값 하나만 넘기면 됨).
+inline CString DescribeBlockAspect(BYTE val)
+{
+	switch (val)
+	{
+	case BlockInfo_BlockAspect::Aspect2: return _T("2현시");
+	case BlockInfo_BlockAspect::Aspect3: return _T("3현시");
+	case BlockInfo_BlockAspect::Aspect4: return _T("4현시");
+	case BlockInfo_BlockAspect::Aspect5: return _T("5현시");
+	default:                             return _T("");
+	}
+}
+
 namespace BlockInfo_BlkKindValue
 {
 	// ExpBlk 관련 비트 플래그 (고속선 관련)
@@ -74,11 +138,62 @@ namespace BlockInfo_BlkKindValue
 		constexpr BYTE REV_HOME_INTERLOCK = 0x02;  // Bit1=1: 정방향출발 && 역방향장내 시 역방향장내 Y/R 상태 조건 제어 및 CNR 방지
 	}
 }
+
+// BlockInfo_BlkKindValue::RevStartRed 설명 문자열 반환 (값 하나만 넘기면 됨).
+// 두 비트가 동시에 켜질 수 있어서 가능한 조합(0x00~0x03)을 모두 case로 나열함.
+inline CString DescribeRevStartRed(BYTE val)
+{
+	using namespace BlockInfo_BlkKindValue::RevStartRed;
+	switch (val)
+	{
+	case 0x00:                        return _T("");
+	case RED_OUT_ENABLE:               return _T("역방향 출발시(내방궤도 점유시) 폐색 적색 표시 및 출력");
+	case STEADY_RED:                   return _T("역방향 출발 폐색 적색 고정 표시 (적색점멸 없음)");
+	case RED_OUT_ENABLE | STEADY_RED:  return _T("역방향 출발시(내방궤도 점유시) 폐색 적색 표시 및 출력, 역방향 출발 폐색 적색 고정 표시 (적색점멸 없음)");
+	default:return _T("");
+
+
+	}
+}
+
+// BlockInfo_BlkKindValue::OutKind 설명 문자열 반환 (값 하나만 넘기면 됨).
+// [주의] namespace 주석에는 bit2(ACTIVE_SIG)도 있지만, DiffCompareFrame.cpp의
+// ConvertBlockInfoText 주석에 따르면 그 값은 실제로 OutKind가 아니라
+// BlockBOthInfo.DepSig(bit0)에서 관리되는 것으로 확인되어 있어, bit0/bit1
+// 두 비트 조합만 다루고 나머지 비트는 무시함(& 0x03).
+inline CString DescribeOutKind(BYTE val)
+{
+	using namespace BlockInfo_BlkKindValue::OutKind;
+	switch (val & 0x03)
+	{
+	case 0x00:              return _T("");
+	case PROCEED:            return _T("BR, DR 모두 여자시 출발신호 진행 (단선자동 3현시)");
+	case CAUTION:            return _T("BR, DR 모두 여자시 출발신호 주의 (단선자동 3현시)");
+	case PROCEED | CAUTION:  return _T("BR, DR 모두 여자시 출발신호 진행 (단선자동 3현시), BR, DR 모두 여자시 출발신호 주의 (단선자동 3현시)");
+	default: return _T("");
+	}
+}
+
+// BlockInfo_BlkKindValue::RevArrSig 설명 문자열 반환 (값 하나만 넘기면 됨).
+// 두 비트가 동시에 켜질 수 있어서 가능한 조합(0x00~0x03)을 모두 case로 나열함.
+inline CString DescribeRevArrSig(BYTE val)
+{
+	using namespace BlockInfo_BlkKindValue::RevArrSig;
+	switch (val)
+	{
+	case 0x00:                                          return _T("");
+	case REV_START_INTERLOCK:                           return _T("정방향장내 && 역방향출발 시 상호 연동 금지 및 장내신호 잠금");
+	case REV_HOME_INTERLOCK:                            return _T("정방향출발 && 역방향장내 시 역방향장내 Y/R 상태 조건 제어 및 CNR 방지");
+	case REV_START_INTERLOCK | REV_HOME_INTERLOCK:      return _T("정방향장내 && 역방향출발 시 상호 연동 금지 및 장내신호 잠금, 정방향출발 && 역방향장내 시 역방향장내 Y/R 상태 조건 제어 및 CNR 방지");
+	default: return _T("");
+	}
+}
+
 // 소속역 정보 Type
 namespace DwellInfoValue {
 	constexpr BYTE ENDSTATION = 0x01; // bit1 : 종착역 구분 (Dwell Lamp 없음)
 	constexpr BYTE UPKIND = 0x01; // bit 1 : 하선
-	constexpr BYTE DOWNKIND = 0x00; // bit 0 : 상선 
+	constexpr BYTE DOWNKIND = 0x00; // bit 0 : 상선
 }
 // 제어 건널목 정보 Type
 namespace LCInfoTypeStatus
@@ -118,7 +233,7 @@ namespace StatuonInfoType {
 		constexpr BYTE RBCUSE = 0x01; // RBC통신
 		constexpr BYTE CPTSTN = 0x01; // 열차 진입방지 장비(CPT)
 		constexpr BYTE ISCONTROLLC = 0x01; // 건널목 출력 제어
-		constexpr BYTE TRKOPTION = 0x01; // 
+		constexpr BYTE TRKOPTION = 0x01; //
 		constexpr BYTE STNKIND = 0x01; // 연동역 ***********************
 	}
 	namespace StationEquipValue
@@ -279,7 +394,7 @@ namespace RouteInfo
 
 
 	// --- Signal Logic (최대/최소 현시 계열) ---
-	constexpr BYTE SIGNAL_STOP = 0x00; // 정지 
+	constexpr BYTE SIGNAL_STOP = 0x00; // 정지
 	constexpr BYTE SIGNAL_PROCEED = 0x02; // 진행
 	constexpr BYTE SIGNAL_CAUTION = 0x04; // 주의
 	constexpr BYTE SIGNAL_SLOW = 0x06; // 감속
@@ -370,7 +485,7 @@ namespace SignalInfo {
 	constexpr BYTE REPEATS2 = 0x01; // bit0=1 중계 신호기 포함
 	constexpr BYTE UMHOSIG = 0x01; // bit0=1 엄호신호기
 	constexpr BYTE ISTTB = 0x01; // bit0=1 TTB존재
-	constexpr BYTE CPTSIGNAL = 0x01; // bit0=1 CPT 신호기 
+	constexpr BYTE CPTSIGNAL = 0x01; // bit0=1 CPT 신호기
 	constexpr BYTE SPCSIGNAL = 0x01; // bit0=1 타역 신호기
 	constexpr BYTE SigDir = 0x02; // bit1=1 하행 신호기
 	constexpr BYTE SigDir2 = 0x04; // bit2=1 상행신호기
@@ -384,9 +499,9 @@ namespace SwitchInfoT {
 	constexpr BYTE SCISSORS = 0x01;// bit0=1 시서스
 	constexpr BYTE NOSE = 0x01;// bit0=1 노스가동
 	constexpr BYTE ISTWINAUTO = 0x01;// bit0=1 쌍동 표시분리
-	constexpr BYTE TWIN = 0x01;// bit0=1 사용 x 
+	constexpr BYTE TWIN = 0x01;// bit0=1 사용 x
 	constexpr BYTE  SPCSWITCH = 0x01;// bit0=1 쌍동 선로전환기에 대한 표시분리 (메시지분리 설정 선로전환기)타역 선로전환기
-	constexpr BYTE DIRKINDBIT1 = 0x01; // bit0=1 
+	constexpr BYTE DIRKINDBIT1 = 0x01; // bit0=1
 	constexpr BYTE DIRKINDBIT2 = 0x02; // bit1=1 // 추가예정 (bit0=1:정위 L방향,반위 R방향,  bit1=1:정위 R방향,반위 L방향)
 }
 namespace AutoSwitch {
