@@ -41,6 +41,7 @@ public:
 public:
 	virtual void OnDraw(CDC* pDC);  // overridden to draw this view
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 protected:
 	CBCGPGridCtrl* GetActiveGrid();
 	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo);
@@ -71,6 +72,13 @@ protected:
 	SignalCardGridInfo m_wndSignalCardInfoGrid;
 	SwitchCardGridInfo m_wndSwitchCardInfoGrid;
 	TestContainer m_wndTestContainer;
+
+	// 그리드 이름 검색("찾기") 관련. 현재 활성 탭의 그리드에서 실제 이름 컬럼을 대상으로
+	// 부분일치(대소문자 무시) 필터링 + 해당 행으로 스크롤/선택 이동. 실제 검색/필터 동작은
+	// CustomBCGGridCtrl::SearchByName()에 구현돼 있고, 여기서는 대상 그리드/컬럼만 결정해서 위임함.
+	CEdit m_wndSearchEdit;
+	CBCGPButton m_wndSearchNextBtn;
+	EGridType TabIndexToGridType(int nActiveTab);
 	//DBstruct m_TSCDBStruct; // 연동.bin 파일의 데이터를 저장하는 구조체 (속도코드 제어장치로 수정)
 	//CARD_INFO m_TSCCardInfo; // IOCard.bin 파일의 데이터를 저장하는 구조체
 	std::map<int, LOGIC_VARIABLE> m_TSCLogicVariableMap; // LogicVariable.Dat 파일의 데이터를 저장하는 맵
@@ -112,6 +120,7 @@ public:
 	afx_msg void OnAppDiff();
 	//	afx_msg void OnClose();
 	afx_msg void OnDestroy();
+	afx_msg void OnSearchNext();
 };
 
 #ifndef _DEBUG  // debug version in DataViewExView.cpp

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "CustomBCGGridCtrl.h"
 
+IMPLEMENT_DYNAMIC(CustomBCGGridCtrl, CBCGPGridCtrl)
 
 CustomBCGGridCtrl::CustomBCGGridCtrl()
 {
@@ -240,6 +241,127 @@ BOOL CustomBCGGridCtrl::IsItemFilteredByFilterBar(CBCGPGridItem* pItem, int nCol
 {
 
 	return CBCGPGridCtrl::IsItemFilteredByFilterBar(pItem, nColumn, strFilter);
+}
+
+// BCGP가 행 하나하나를 화면에 그릴지 말지 최종 판정하는 단일 진입점(FilterBar 필터,
+// 헤더 콤보 필터 등 BCG의 모든 내장 필터 기능도 결국 이 함수를 거쳐감 - CBCGPGridRow::
+// IsItemFiltered()가 이 함수를 그대로 호출함). 저희는 EnableFilterBar/EnableFilter 같은
+// BCG 내장 필터를 전혀 쓰지 않고, 검색어(m_strSearchFilter)/대상 컬럼(m_nSearchColumn)을
+// 직접 비교해서 판정함. 네이티브 FilterBar UI 자체가 생성되지 않으므로 예전에 있었던
+// "탭 전환 시 필터바가 다시 보이는" 문제도 원천적으로 발생하지 않음.
+BOOL CustomBCGGridCtrl::FilterItem(const CBCGPGridRow* pRow)
+{
+	if (m_strSearchFilter.IsEmpty() || pRow == nullptr)
+		return FALSE; // 검색어 없음: 전부 표시
+
+	if (m_nSearchColumn < 0 || m_nSearchColumn >= pRow->GetItemCount())
+		return TRUE; // 검색 대상 컬럼 자체가 없는 행(그룹 헤더 등)은 숨김
+
+	CBCGPGridItem* pItem = pRow->GetItem(m_nSearchColumn);
+	if (pItem == nullptr)
+		return TRUE;
+
+	_variant_t var = pItem->GetValue();
+	if (var.vt == VT_EMPTY || var.vt == VT_NULL)
+		return TRUE; // 값 없음: 검색어와 일치할 수 없으므로 숨김
+
+	CString strValue = (LPCTSTR)(_bstr_t)var;
+	strValue.MakeLower();
+
+	return strValue.Find(m_strSearchFilter) == -1; // TRUE = 숨김(불일치)
+}
+
+// 이름 컬럼(nNameColumn)이 strSearch를 포함하는 다음 행을 찾아 화면에 스크롤 + 선택 이동시킴.
+// 연속으로 부르면 마지막으로 찾은 행 다음부터 이어서 찾고(다음 찾기), 끝까지 못 찾으면
+// 처음으로 돌아가 한 바퀴 더 검색함.
+bool CustomBCGGridCtrl::FindNextRowByName(const CString& strSearch, int nNameColumn)
+{
+	if (strSearch.IsEmpty())
+		return false;
+
+	int nRowCount = GetRowCount();
+	if (nRowCount <= 0)
+		return false;
+
+	CString strSearchLower = strSearch;
+	strSearchLower.MakeLower();
+
+	int nStart = (m_nLastFoundRow >= 0) ? (m_nLastFoundRow + 1) : 0;
+	if (nStart >= nRowCount) nStart = 0;
+
+	// pass 0: nStart부터 끝까지, pass 1: 처음부터 nStart 직전까지 (한 바퀴 순환 검색)
+	for (int pass = 0; pass < 2; ++pass)
+	{
+		int nBegin = (pass == 0) ? nStart : 0;
+		int nEnd = (pass == 0) ? nRowCount : nStart;
+
+		for (int r = nBegin; r < nEnd; ++r)
+		{
+			CBCGPGridRow* pRow = GetRow(r);
+			if (pRow == nullptr || nNameColumn >= pRow->GetItemCount())
+				continue;
+
+			CBCGPGridItem* pItem = pRow->GetItem(nNameColumn);
+			if (pItem == nullptr)
+				continue;
+
+			_variant_t var = pItem->GetValue();
+			if (var.vt == VT_EMPTY || var.vt == VT_NULL)
+				continue;
+
+			CString strName = (LPCTSTR)(_bstr_t)var;
+			CString strNameLower = strName;
+			strNameLower.MakeLower();
+
+			if (strNameLower.Find(strSearchLower) != -1)
+			{
+				EnsureVisible(pRow, TRUE);
+				pRow->Select(TRUE);
+				Invalidate();
+
+				m_nLastFoundRow = r;
+				return true;
+			}
+		}
+
+		if (nStart == 0) break; // 처음부터 이미 다 돌았으면 두 번째 순회는 불필요
+	}
+
+	// 못 찾음: 다음 검색은 다시 처음부터
+	m_nLastFoundRow = -1;
+	return false;
+}
+
+bool CustomBCGGridCtrl::SearchByName(const CString& strSearchIn, int nNameColumn)
+{
+	CString strSearch = strSearchIn;
+	strSearch.Trim();
+
+	// 레이아웃이 다시 잡히는(AdjustLayout) 동안 중간 상태가 화면에 그려지면 깜빡임이
+	// 생길 수 있어서 SetRedraw로 이 구간 전체를 안 그리게 막음.
+	SetRedraw(FALSE);
+
+	// FilterItem()이 참조할 검색 상태를 갱신한 뒤 AdjustLayout()으로 전체 행을 다시
+	// 평가/재배치시킴(BCG가 필터 조건이 바뀔 때 내부적으로 호출하는 것과 동일한 루틴).
+	m_nSearchColumn = nNameColumn;
+	m_strSearchFilter = strSearch;
+	m_strSearchFilter.MakeLower();
+	AdjustLayout();
+
+	bool bFound = true;
+	if (strSearch.IsEmpty())
+	{
+		m_nLastFoundRow = -1;
+	}
+	else
+	{
+		bFound = FindNextRowByName(strSearch, nNameColumn);
+	}
+
+	SetRedraw(TRUE);
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+
+	return bFound;
 }
 //void CustomBCGGridCtrl::OnFilterBarApply()
 //{
