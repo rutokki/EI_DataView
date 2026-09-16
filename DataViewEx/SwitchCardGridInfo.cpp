@@ -131,20 +131,11 @@ void SwitchCardGridInfo::LoadAllSwitchCardData()
 			// NoseAB/NoseKind는 문자 코드를 사람이 읽을 수 있는 텍스트로 변환하고,
 			// Idx는 숫자 그대로 SetValue 하도록 수정.
 			//
-			// [추가] 카드 원본(NoseAB/NoseKind)만으로는 이 선로전환기가 실제로 "노스가동"인지
-			// 알 수 없으므로(노스가동이 아닌 카드에도 값이 남아있을 수 있음), Table Index(Idx)로
-			// EI_DBStruct의 SwitchInfoType(Kind.Nose/Kind.Double)을 조회해 실제 노스가동 여부를
-			// 판정한 뒤, 노스가동인 경우에만 A호/B호 및 노스 종류 텍스트를 표시한다.
-			int nNoseType = GetSwitchIsNose(portItem.Idx);
-			// [수정] 단순히 "A호"/"B호"만 보여주면 어느 쪽이 NS-AM이고 어느 쪽이 MJ81(노스가동)인지
-			// 알 수 없어서, GetSwitchIsNose() 판정 결과(nNoseType)와 결합해 역할까지 함께 표시.
-			CString strNoseAB = (nNoseType != 0) ? GetNoseABRoleText(cardItem.NoseAB, nNoseType) : (CString)_T("");
-			CString strNoseKind = (nNoseType != 0) ? GetNoseKindText(portItem.NoseKind) : (CString)_T("");
-
 			pRow->GetItem(0)->SetValue(cardItem.RackNo);              // 랙번호
 			pRow->GetItem(1)->SetValue(cardItem.SlotNo);               // 슬롯번호
 			pRow->GetItem(2)->SetValue((LONG)nCardNo);              // 카드번호
 			pRow->GetItem(3)->SetValue(portItem.PortNo);                // 포트번호
+<<<<<<< HEAD
 			pRow->GetItem(4)->SetValue((LPCTSTR)strCardKind);           // 선로전환기 카드 종류
 			pRow->GetItem(5)->SetValue((LPCTSTR)strNoseAB);             // 노스가동 (A호/B호) - DB 기준 노스가동인 경우만 표시
 			pRow->GetItem(6)->SetValue((LPCTSTR)GetName(portItem));     // 이름
@@ -152,6 +143,41 @@ void SwitchCardGridInfo::LoadAllSwitchCardData()
 			pRow->GetItem(8)->SetValue((LPCTSTR)strNoseKind);           // 노스 종류 (첨단/크로싱) - DB 기준 노스가동인 경우만 표시
 			pRow->GetItem(9)->SetValue(portItem.Idx);                   // Table Index (숫자 그대로)
 			SetDebugIdx(pRow, (int)(&cardItem - SwitchCardInfo.data()), (int)nPort); // [DEBUG-IDX] SWITCHLIST[카드].CardData[포트]
+=======
+
+			// [추가] Table Index(Idx)가 설정되지 않은(0 또는 소거된 0xFF) 포트는 실제로
+			// 연결된 선로전환기가 없는 자리이므로, 포트 위치(RackNo/SlotNo/CardNo/PortNo)까지만
+			// 표시하고 카드 종류/노스가동/이름/표찰이름/노스 종류/Table Index는 전부 빈 칸으로 둠.
+			bool bIdxEmpty = (Byte_t)portItem.Idx == 0 || (Byte_t)portItem.Idx == 0xFF;
+			if (bIdxEmpty)
+			{
+				pRow->GetItem(4)->SetValue(_T(""));
+				pRow->GetItem(5)->SetValue(_T(""));
+				pRow->GetItem(6)->SetValue(_T(""));
+				pRow->GetItem(7)->SetValue(_T(""));
+				pRow->GetItem(8)->SetValue(_T(""));
+				pRow->GetItem(9)->SetValue(_T(""));
+			}
+			else
+			{
+				// [추가] 카드 원본(NoseAB/NoseKind)만으로는 이 선로전환기가 실제로 "노스가동"인지
+				// 알 수 없으므로(노스가동이 아닌 카드에도 값이 남아있을 수 있음), Table Index(Idx)로
+				// EI_DBStruct의 SwitchInfoType(Kind.Nose/Kind.Double)을 조회해 실제 노스가동 여부를
+				// 판정한 뒤, 노스가동인 경우에만 A호/B호 및 노스 종류 텍스트를 표시한다.
+				int nNoseType = GetSwitchIsNose(portItem.Idx);
+				// [수정] 단순히 "A호"/"B호"만 보여주면 어느 쪽이 NS-AM이고 어느 쪽이 MJ81(노스가동)인지
+				// 알 수 없어서, GetSwitchIsNose() 판정 결과(nNoseType)와 결합해 역할까지 함께 표시.
+				CString strNoseAB = (nNoseType != 0) ? GetNoseABRoleText(cardItem.NoseAB, nNoseType) : (CString)_T("");
+				CString strNoseKind = (nNoseType != 0) ? GetNoseKindText(portItem.NoseKind) : (CString)_T("");
+
+				pRow->GetItem(4)->SetValue((LPCTSTR)strCardKind);           // 선로전환기 카드 종류
+				pRow->GetItem(5)->SetValue((LPCTSTR)strNoseAB);             // 노스가동 (A호/B호) - DB 기준 노스가동인 경우만 표시
+				pRow->GetItem(6)->SetValue((LPCTSTR)GetName(portItem));     // 이름
+				pRow->GetItem(7)->SetValue((LPCTSTR)GetTagName(portItem));  // 표찰이름
+				pRow->GetItem(8)->SetValue((LPCTSTR)strNoseKind);           // 노스 종류 (첨담/크로싱) - DB 기준 노스가동인 경우만 표시
+				pRow->GetItem(9)->SetValue(portItem.Idx);                   // Table Index (숫자 그대로)
+			}
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 
 			AddRow(pRow, FALSE);
 		}

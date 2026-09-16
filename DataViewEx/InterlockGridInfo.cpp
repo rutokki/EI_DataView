@@ -90,7 +90,7 @@ CString InterlockGridInfo::GetSwitchLockStr(const InterLockInfoType& item)
 		str += temp;
 		Byte_t lk = item.SwitchLock[i].LockKind;
 		if (lk > 0) {
-			str += _T("(");
+			str += _T("");
 			if (lk & 0x01) str += _T("진로");
 			if (lk & 0x02) str += _T(" Overlap");
 			if (lk & 0x04) str += _T(" 설정시쇄정");

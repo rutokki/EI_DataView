@@ -5,6 +5,11 @@ class INCardGridInfo : public CBCGPGridCtrl
 {
 public:
 	INCardGridInfo();
+	// CustomBCGGridCtrl 계열 그리드들과 동일하게 정렬 기능 자체를 차단(헤더 클릭 정렬 방지는
+	// 생성자의 EnableHeader(TRUE, 0)이 담당, 이건 프로그램적으로 Sort()가 호출되는 경우까지 방어).
+	virtual void Sort(int nColumn, BOOL bAscending = TRUE, BOOL bAdd = FALSE) override {
+		return;
+	}
 	DECLARE_MESSAGE_MAP()
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnSize(UINT nType, int cx, int cy);

@@ -21,6 +21,10 @@ INCardGridInfo::INCardGridInfo()
 	EnableDragHeaderItems(FALSE);
 	EnableMarkSortedColumn(FALSE);
 	SetClearInplaceEditOnEnter(FALSE);
+	// 헤더 클릭 시 정렬되는 기본 동작 차단(다른 CustomBCGGridCtrl 계열 그리드들과 동일하게).
+	// 이 그리드는 카드/포트 단위로 빈 줄 구분을 넣어 순서 자체가 의미 있는 구조라
+	// 정렬되면 그 구조가 깨짐.
+	EnableHeader(TRUE, 0);
 
 }
 
@@ -91,6 +95,12 @@ void INCardGridInfo::LoadAllInCardData()
 
 			// 미사용 포트는 건너뜀
 			if (portItem.PortNo == 0) continue;
+
+			// [추가] 포트 슬롯은 있지만(PortNo!=0) 이름/비트이름 데이터가 전혀 설정되지
+			// 않은(초기값 0 또는 소거된 0xFF) 항목은 행 자체를 표시하지 않음.
+			bool bNameEmpty = (Byte_t)portItem.Name[0] == 0 || (Byte_t)portItem.Name[0] == 0xFF;
+			bool bBitNameEmpty = (Byte_t)portItem.BitName[0] == 0 || (Byte_t)portItem.BitName[0] == 0xFF;
+			if (bNameEmpty && bBitNameEmpty) continue;
 
 			// 그리드 행 증가
 			nRow++;

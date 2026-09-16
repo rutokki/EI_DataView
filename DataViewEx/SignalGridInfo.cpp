@@ -36,6 +36,7 @@ void SignalGridInfo::LoadAllSignal()
 		// 신호기 이름 0번
 		pRow->GetItem(0)->SetValue((LPCTSTR)CommonUtil::GetSafeString(item.Name, 20));
 
+<<<<<<< HEAD
 		// 신호기 종류 1번 ~ 12번
 		SetSignalType(pRow, item);
 
@@ -62,6 +63,33 @@ void SignalGridInfo::LoadAllSignal()
 		if (item.Kind.SigDir & SignalInfo::SigDir2) strDir += strDir.IsEmpty() ? _T("하행") : _T("/하행");
 		pRow->GetItem(21)->SetValue((LPCTSTR)strDir);
 		SetDebugIdx(pRow, (int)(&item - signalList.data())); // [DEBUG-IDX] _SIG_Info 배열 인덱스
+=======
+		// 신호기 타입 1번 ~ 14번 (SetSignalType 내부 signalList[]가 실제 컬럼과 매핑됨)
+		SetSignalType(pRow, item);
+
+		// [수정] GetSignalColumnInfo()에 OUT/IN카드 무유도출력 컬럼 2개가 "입환" 뒤에 추가되면서
+		// 아래 컬럼들도 전부 2씩 밀림(13~20번 -> 15~22번).
+		// 신호기 현시 수 15번
+		pRow->GetItem(15)->SetValue(item.NoOfLight);
+
+		// 신호기 진로 수 16번
+		pRow->GetItem(16)->SetValue(item.NoOfRoute);
+
+		// 신호기 궤도명 17번
+		CString strTrackNames = CommonUtil::GetDBNameByNumber(item.TrackNo, GetDBNameByNum::TrackIdx);
+		pRow->GetItem(17)->SetValue((LPCTSTR)strTrackNames);
+		// 전방 신호기 18번
+		pRow->GetItem(18)->SetValue((LPCTSTR)CommonUtil::GetDBNameByNumber(item.FrontSignalNo, GetDBNameByNum::SignalIdx));
+		// 중계 신호기 19번
+		pRow->GetItem(19)->SetValue((LPCTSTR)CommonUtil::GetDBNameByNumber(item.RepeatSigNo, GetDBNameByNum::SignalIdx));
+
+		// 후방 폐색 현시 수 20번 (2:2현시,3:3현시,4:4현시,5:5현시)
+		pRow->GetItem(20)->SetValue(item.RearBlockAspect);
+		// ATS 출력 있음 21번
+		if (item.SignalOut.SigOutATS & 0x01) pRow->GetItem(21)->SetValue(_T("O"));
+		// 후방제어 폐색제어 출력 있음 22번
+		if (item.SignalOut.SigOutRear & 0x01) pRow->GetItem(22)->SetValue(_T("O"));
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 
 		AddRow(pRow, FALSE);
 	}
@@ -167,11 +195,20 @@ int SignalGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	m_Column.SetHeaderLineCount(2);
 
-	//상세 헤더 병합 설정 (2번~15번 컬럼)
+	//상세 헤더 병합 설정
+	// [수정] GetSignalColumnInfo()에 OUT/IN카드 무유도출력 컬럼 2개가 "입환" 뒤에 추가되면서
+	// 이후 모든 컬럼 인덱스가 2씩 밀림 - "신호기 종류" 그룹은 그 2개를 포함해서 1~14로,
+	// "신호기 출력" 그룹(전방신호기~후방출력, 원래도 실제 컬럼(16~20)과 안 맞고 17~21로
+	// 하나씩 밀려 있었고 21번은 존재하지도 않는 컬럼이었음)은 18~22로 바로잡음.
 	CArray<int, int> arrSignalTypeCols;
 	CArray<int, int> arrSignalOutPutCols;
+<<<<<<< HEAD
 	for (int i = 1; i <= 12; i++) arrSignalTypeCols.Add(i);
 	for (int j = 18; j <= 19; j++) arrSignalOutPutCols.Add(j); // [수정] ATS출력/후방출력 (기존 17~21 은 실제 출력 칼럼과 어긋나 있었음)
+=======
+	for (int i = 1; i <= 14; i++) arrSignalTypeCols.Add(i);
+	for (int j = 18; j <= 22; j++) arrSignalOutPutCols.Add(j);
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 	CArray<int, int> arrDetailSignalTypeLines;
 	CArray<int, int> arrDetailSignalOutPutLines;
 	arrDetailSignalTypeLines.Add(0); // 상단 그룹 헤더는 0번 라인

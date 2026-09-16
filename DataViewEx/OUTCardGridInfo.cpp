@@ -73,6 +73,12 @@ void OUTCardGridInfo::LoadAllOutCardData()
 			// 미사용 포트는 건너뜀
 			if (portItem.PortNo == 0) continue;
 
+			// [추가] 포트 슬롯은 있지만(PortNo!=0) 이름/표찰이름 데이터가 전혀 설정되지
+			// 않은(초기값 0 또는 소거된 0xFF) 항목은 행 자체를 표시하지 않음.
+			bool bNameEmpty = (Byte_t)portItem.Name[0] == 0 || (Byte_t)portItem.Name[0] == 0xFF;
+			bool bBitNameEmpty = (Byte_t)portItem.BitName[0] == 0 || (Byte_t)portItem.BitName[0] == 0xFF;
+			if (bNameEmpty && bBitNameEmpty) continue;
+
 			// 그리드 행 증가
 			nRow++;
 
@@ -96,10 +102,14 @@ void OUTCardGridInfo::LoadAllOutCardData()
 			pRow->GetItem(8)->SetValue(portItem.BitNo); //비트번호
 			CString strOutKind = GetOUTKInd(portItem.Kind, portItem.PORTOUT.OutKind);
 			CString strOutGubun = GetOutGubun(portItem.PORTOUT.OutKind, portItem.PORTOUT.OutGubun); // 설비 KInd 별 출력 
+<<<<<<< HEAD
 			// [수정] 출력 구분이 없는 일반 포트에도 " : " 만 표시되던 것 수정,
 			//        문자열을 서식(AppendFormat) 인자로 넘기지 않도록 변경
 			if (!strOutKind.IsEmpty() && !strOutGubun.IsEmpty())
 				strOutKind += _T(" : ") + strOutGubun;
+=======
+			strOutKind.AppendFormat(_T(" ") + strOutGubun);
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 			pRow->GetItem(9)->SetValue((LPCTSTR)strOutKind);
 			SetDebugIdx(pRow, (int)(&cardItem - outCardInfo.data()), (int)nPort); // [DEBUG-IDX] OUTCARDLIST[카드].CardData[포트]
 

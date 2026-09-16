@@ -40,8 +40,12 @@ namespace
 				// 이 포트가 조회 중인 스위치(nIdx)를 가리키는 포트가 아니면 건너뜀
 				if (portItem.Idx != nIdx) continue;
 
-				if (cardItem.NoseAB == 'A') { side.bIsA = true; side.strNameA = GetName(portItem); }
-				if (cardItem.NoseAB == 'B') { side.bIsB = true; side.strNameB = GetName(portItem); }
+				if (cardItem.NoseAB == 'A') {
+					side.bIsA = true; side.strNameA = GetName(portItem);
+				}
+				if (cardItem.NoseAB == 'B') {
+					side.bIsB = true; side.strNameB = GetName(portItem);
+				}
 			}
 		}
 
@@ -109,14 +113,22 @@ void SwitchGridInfo::LoadAllSwitchData()
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
 		pRow->GetItem(0)->SetValue((LPCTSTR)CommonUtil::GetName(item));// 선로전환기 이름
 		SetSwitchType(pRow, item, (Byte_t)nIdx); // 선로전환기 타입/방향/A호B호 정의 1~ 14번 칼럼
+<<<<<<< HEAD
 		// [수정] GridColumnDefine::GetSwitchColumnInfo() 는 17개(0~16번) 칼럼이고 A호/B호는 11/12번 2개 칼럼임.
 		// A점~D점을 15~18번에 쓰면 17/18번은 존재하지 않아 GetItem() 이 NULL -> 크래시.
 		// 칼럼 정의 그대로 13~16번에 표시.
+=======
+		// [수정] 사용자 확인(명칭 따로/A호 B호 구분 따로)으로 A호/B호가 4개 칼럼(11~14번)으로
+		// 재구성되면서 A점~D점이 15~18번으로 밀림 -> 인덱스 수정.
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 		pRow->GetItem(13)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[0], GetDBNameByNum::TrackIdx)); // A점
 		pRow->GetItem(14)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[1], GetDBNameByNum::TrackIdx)); // B점
 		pRow->GetItem(15)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[2], GetDBNameByNum::TrackIdx)); // C점
 		pRow->GetItem(16)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[3], GetDBNameByNum::TrackIdx)); // D점
+<<<<<<< HEAD
 		SetDebugIdx(pRow, (int)nIdx); // [DEBUG-IDX] _SWH_Info 배열 인덱스
+=======
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 
 		// [정리] 로컬 출력(OUT WLR/PDO WR-N/PDO WR-R, Kind.LocalOut) 관련은 매핑 대상에서
 		// 제외하기로 확정함 (사용자 확인: 로컬 출력 제거). item.OutWLR 등은 애초에
@@ -217,6 +229,7 @@ void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchIte
 		SwitchNoseSide side = GetSwitchNoseSide(nIdx);
 
 		auto SetCell = [&](int nCol, const CString& strText)
+<<<<<<< HEAD
 		{
 			if (strText.IsEmpty()) return;
 			CBCGPGridItem* pItem = pRow->GetItem(nCol);
@@ -225,6 +238,16 @@ void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchIte
 			pItem->SetTextColor(RGB(0, 0, 0)); // 판별 결과 텍스트가 보이도록 (배경색과 동일하면 글자가 안 보임)
 			pItem->SetBackgroundColor(RGB(80, 205, 80));
 		};
+=======
+			{
+				if (strText.IsEmpty()) return;
+				CBCGPGridItem* pItem = pRow->GetItem(nCol);
+				if (pItem == nullptr) return;
+				pItem->SetValue((LPCTSTR)strText);
+				pItem->SetTextColor(RGB(80, 205, 80));
+				pItem->SetBackgroundColor(RGB(80, 205, 80));
+			};
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 		if (side.bIsA)
 		{
 			SetCell(11, GetNoseSideRoleText(nNoseType, true));   // A호 : NS-AM / MJ81

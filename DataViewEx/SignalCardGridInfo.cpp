@@ -66,17 +66,25 @@ void SignalCardGridInfo::LoadAllSignalCardData()
 			AddRow(pEmptyRow, FALSE);
 			nRow++;
 		}
+		// [수정] EI_IP_IOCard_Typedef.h의 SIG_CARDTABLE.CardKind 주석 기준으로 카드 종류별
+		// 유효 포트(=신호기) 개수가 다름 - 카드당 포트 슬롯은 항상 4개(MAX_SIG_MODULE_PORT)로
+		// 고정돼 있어서 PortNo!=0 체크만으로는 타입과 무관하게 4개가 다 나와버림.
+		// 3(4등형: 주신호기/구내폐색) : 모듈당 최대 2개의 신호기
+		// 4(2등형: 입환 표지/신호기)  : 모듈당 최대 4개의 신호기
+		UINT nMaxPort = _countof(cardItem.CardData) - 1; // 기본값(정의되지 않은 CardKind): 전체 4개
 		if (cardItem.CardKind == 3) {
 			strCardKind = _T("4등형 신호기(주신호기, 구내폐색)");
+			nMaxPort = 2;
 		}
 		else if (cardItem.CardKind == 4) {
 			strCardKind = _T("2등형 신호기(입환 표지, 신호기)");
+			nMaxPort = 4;
 		}
 		else {
 			strCardKind = _T("");
 		}
-		// 카드 내 포트 순회 (Index : 1부터 사용, 0번째는 미사용)
-		for (UINT nPort = 1; nPort < _countof(cardItem.CardData); nPort++) {
+		// 카드 내 포트 순회 (Index : 1부터 사용, 0번째는 미사용, 카드 종류별 유효 개수까지만)
+		for (UINT nPort = 1; nPort <= nMaxPort; nPort++) {
 			auto& portItem = cardItem.CardData[nPort];
 
 			// 미사용 포트는 건너뜀
@@ -95,11 +103,33 @@ void SignalCardGridInfo::LoadAllSignalCardData()
 			pRow->GetItem(1)->SetValue(cardItem.SlotNo);               // 슬롯번호
 			pRow->GetItem(2)->SetValue((LONG)nCardNo);              // 카드번호
 			pRow->GetItem(3)->SetValue(portItem.PortNo);                // 포트번호
+<<<<<<< HEAD
 			pRow->GetItem(4)->SetValue((LPCTSTR)strCardKind); // 신호기 카드 종류 (3->4등형 신호기, 4->2등형 신호기)
 			pRow->GetItem(5)->SetValue((LPCTSTR)GetName(portItem));     // 이름
 			pRow->GetItem(6)->SetValue((LPCTSTR)GetTagName(portItem));  // 표찰이름
 			pRow->GetItem(7)->SetValue(portItem.Idx);                   // Table Index (숫자 그대로, 문자열 캐스팅 금지)
 			SetDebugIdx(pRow, (int)(&cardItem - SignalCardInfo.data()), (int)nPort); // [DEBUG-IDX] SIGNALLIST[카드].CardData[포트]
+=======
+
+			// [추가] Table Index(Idx)가 설정되지 않은(0 또는 소거된 0xFF) 포트는 실제로
+			// 연결된 신호기가 없는 자리이므로, 포트 위치(RackNo/SlotNo/CardNo/PortNo)까지만
+			// 표시하고 카드 종류/이름/표찰이름/Table Index는 전부 빈 칸으로 둠.
+			bool bIdxEmpty = (Byte_t)portItem.Idx == 0 || (Byte_t)portItem.Idx == 0xFF;
+			if (bIdxEmpty)
+			{
+				pRow->GetItem(4)->SetValue(_T(""));
+				pRow->GetItem(5)->SetValue(_T(""));
+				pRow->GetItem(6)->SetValue(_T(""));
+				pRow->GetItem(7)->SetValue(_T(""));
+			}
+			else
+			{
+				pRow->GetItem(4)->SetValue((LPCTSTR)strCardKind);           // 신호기 카드 종류 (3->4등형 신호기, 4->2등형 신호기)
+				pRow->GetItem(5)->SetValue((LPCTSTR)GetName(portItem));     // 이름
+				pRow->GetItem(6)->SetValue((LPCTSTR)GetTagName(portItem));  // 표찰이름
+				pRow->GetItem(7)->SetValue(portItem.Idx);                   // Table Index (숫자 그대로)
+			}
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 
 			AddRow(pRow, FALSE);
 		}

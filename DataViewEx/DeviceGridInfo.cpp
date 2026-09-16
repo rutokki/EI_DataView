@@ -18,6 +18,7 @@ DeviceGridInfo::DeviceGridInfo()
 	SetRowMarker(FALSE);
 	//EnableLineNumbers(TRUE);
 	SetReadOnly(TRUE);
+
 	EnableMarkSortedColumn(FALSE);
 	EnableTextOverflowing(FALSE);
 	m_bTextOverflowing = FALSE;
@@ -50,7 +51,11 @@ CString DeviceGridInfo::GetBlockKindFromByte(Byte_t byte)
 	case BlockKind::BiDirectional:             return _T("양방향 폐색\r\n(정방향출발 && 역방향장내)");
 	case BlockKind::BiDirectionalRev:          return _T("양방향 폐색\r\n(정방향장내 && 역방향출발)");
 	case BlockKind::HighSpeedBlock:            return _T("고속선 폐색");
+<<<<<<< HEAD
 	case BlockKind::BiDirectionalEtc:          return _T("양방향 폐색 (14 - 세부 종류 미정의)");
+=======
+	case BlockKind::BiDirectionalEtc:          return _T("양방향 폐색");
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 	default:                                   return _T("미정의 폐색");
 	}
 }
@@ -90,7 +95,7 @@ CString DeviceGridInfo::GetBlcokAspectFromByte(Byte_t blkKind, Byte_t aspectCoun
 		str.Format(_T("%d현시"), aspectCount);
 		return str;
 	}
-	return _T("잘못된 현시 데이터");
+	return _T("");
 }
 int DeviceGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
@@ -132,7 +137,11 @@ void DeviceGridInfo::LoadAllData()
 		pRow->GetItem(0)->SetValue(_T("폐색"));
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
 		CString KindASpect = (_T(""));
+<<<<<<< HEAD
 		KindASpect.AppendFormat(GetBlockKindFromByte(item.BlkKind) + _T(" / ") + GetBlcokAspectFromByte(item.BlkKind, item.BlockAspect)); //GetBlockAspectFromByte 폐색 종류및 현시수반환
+=======
+		KindASpect.AppendFormat(DescribeBlkKind_Aspect(item.BlkKind, item.BlockAspect)); //GetBlockAspectFromByte 폐색 종류및 현시수반환
+>>>>>>> b97e2d0 (Release 빌드 크래시(Korean 리소스 문자열 손상) 복구, DeviceGridInfo CommonUtil 정리)
 		// [2번 컬럼] 구분 (BlkKind)
 		pRow->GetItem(2)->SetValue((LPCTSTR)KindASpect);
 		pRow->GetItem(2)->SetMultiline(TRUE);
