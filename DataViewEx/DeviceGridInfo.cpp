@@ -131,18 +131,12 @@ void DeviceGridInfo::LoadAllData()
 		pRow->GetItem(0)->SetValue(_T("폐색"));
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
 		CString KindASpect = (_T(""));
-		KindASpect.AppendFormat(GetBlockKindFromByte(item.BlkKind) + _T(" / ") + GetBlcokAspectFromByte(item.BlkKind, item.BlockAspect));
+		KindASpect.AppendFormat(GetBlockKindFromByte(item.BlkKind) + _T(" / ") + GetBlcokAspectFromByte(item.BlkKind, item.BlockAspect)); //GetBlockAspectFromByte 폐색 종류및 현시수반환
 		// [2번 컬럼] 구분 (BlkKind)
 		pRow->GetItem(2)->SetValue((LPCTSTR)KindASpect);
 		pRow->GetItem(2)->SetMultiline(TRUE);
 		CString strKind = _T("");
-		// 양방향 폐색이면 노선 정보를 구분 컬럼에 합침
-		if (item.BlkKind == 11 || item.BlkKind == 12 || item.BlkKind == 14)
-		{
-			// [수정] 전라선/경부선 구분은 원본 구조체 주석상 RevKind의 Bit1(0x02)이며,
-			// Bit0(0x01)은 완전히 다른 의미(서울교통공사 3,4호선 역방향 폐색)라 혼동하면 안 됨.
-			strKind += (item.KindInfo.RevKind & 0x02) ? _T("(전라선 양방향 폐색)") : _T("(경부선 양방향 폐색)");
-		}
+
 		pRow->GetItem(3)->SetValue((LPCTSTR)strKind);
 		// [3번 컬럼] 종합 상세 데이터
 		// 새롭게 작성한 분해 함수를 통해 궤도, 타이머, 포트 등 모든 정보를 문자열로 받음
@@ -394,15 +388,6 @@ CString DeviceGridInfo::GetLCListInfoString(LC_CTRL_INFO_TYPE* pData)
 	strTotal += strTemp;
 	return strTotal;
 }
-CString DeviceGridInfo::GetTrackName(CString trackIndex)
-{
-	int nIndex = _ttoi(trackIndex);
-	if (nIndex < 0 || nIndex >= MAX_TRACK) {
-		return _T("범위 초과");
-	}
-	auto trackInfo = StructMainData::GetInstance().GetTrackInfo();
-	return GetSafeString(trackInfo[nIndex].Name, 20);
-}
 void DeviceGridInfo::UpdateDeviceData()
 {
 	RemoveAll();
@@ -422,9 +407,9 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 	// 1. 궤도 및 기본 정보 배열 분해
 	// ==========================================
 	strTotal.Format(_T("[궤도 정보]\r\n장내궤도: %s \r\n출발궤도: %s \r\n출발적색궤도: %s \r\n"),
-		(LPCTSTR)FormatTrackNamesFromByteArray(pData->ArrTrack, 10),       // 10개짜리 배열 전체 스캔
-		(LPCTSTR)FormatTrackNamesFromByteArray(pData->DepTrack, 10),       // 10개짜리 배열 전체 스캔
-		(LPCTSTR)FormatTrackNamesFromByteArray(pData->BlockDepRed.DepBlkRedTrk, 10));
+		(LPCTSTR)GetDBNameByArray(pData->ArrTrack, 10, TrackIdx),       // 10개짜리 배열 전체 스캔
+		(LPCTSTR)GetDBNameByArray(pData->DepTrack, 10, TrackIdx),       // 10개짜리 배열 전체 스캔
+		(LPCTSTR)GetDBNameByArray(pData->BlockDepRed.DepBlkRedTrk, 10, TrackIdx));
 	// 상대/후방 폐색 및 신호기 정보
 	strTemp.Format(_T("상대폐색:%d, 후방폐색:%d, 엄호신호:%d, 장내신호:%d\r\n"),
 		pData->OppositeBlock, pData->RearBlock, pData->UmhoSignal, pData->ArrivalSignal);
@@ -539,31 +524,6 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 	strTemp = strPorts.IsEmpty() ? CString(_T("해당 폐색 종류에 정의된 포트 출력 없음")) : (CString)strPorts;
 	strTotal += strTemp;
 	return strTotal;
-}
-CString DeviceGridInfo::FormatTrackNamesFromByteArray(const Byte_t* pArr, int nSize)
-{
-	CString strResult;
-	for (int i = 0; i < nSize; i++)
-	{
-		// 바이트 값이 0이 아니라면 유효한 궤도 번호(인덱스)임
-		if (pArr[i] != 0)
-		{
-			// 1. 바이트 숫자를 문자열 인덱스로 변환 (예: 5 -> "5")
-			CString strIdx;
-			strIdx.Format(_T("%d"), pArr[i]);
-			// 2. 위에서 만든 GetTrackName을 호출하여 실제 이름을 가져옴
-			CString strName = GetTrackName(strIdx);
-			// 3. 이름이 정상적으로 존재한다면 결과 문자열에 추가
-			if (!strName.IsEmpty())
-			{
-				strResult.AppendFormat(_T("%s, "), (LPCTSTR)strName);
-			}
-		}
-	}
-	// 맨 뒤에 남아있는 쓸데없는 콤마(", ")를 제거
-	strResult.TrimRight(_T(", "));
-	// 만약 유효한 궤도가 하나도 없었다면 "없음" 출력
-	return strResult.IsEmpty() ? (CString)_T("없음") : strResult;
 }
 CString DeviceGridInfo::FormatByteArray(const Byte_t* pArr, int nSize)
 {

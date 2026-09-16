@@ -422,96 +422,7 @@ void CDataViewExView::OnContextMenu(CWnd*, CPoint point)
 	theApp.ShowPopupMenu(IDR_CONTEXT_MENU, point, this);
 }
 
-//void CDataViewExView::OnDataOpen()
-//{
-//	CFile file;
-//	CFileDialog dlg(TRUE, _T("bin"), NULL, OFN_FILEMUSTEXIST | OFN_HIDEREADONLY, _T("연동 데이터 (*.bin)|*_연동_데이터.bin||"));
-//	CString fileName = _T("");
-//	CString folderPath = _T("");
-//	CString strStationName = _T("");
-//	CString strIOCardPath = _T("");
-//	CString strLogicPath = _T("");
-//	if (dlg.DoModal() == IDOK)
-//	{
-//		fileName = dlg.GetFileName();
-//		folderPath = dlg.GetFolderPath();
-//		strStationName = GetFileStationName(fileName);
-//		strIOCardPath = folderPath + _T("\\") + strStationName + _T("_ioCard.bin");
-//		strLogicPath = folderPath + _T("\\") + strStationName + _T("_LogicVariable.Dat");
-//		CDataViewExDoc* pDoc = (CDataViewExDoc*)GetDocument();
-//		if (fileName.Find(L"_연동_데이터.bin") != -1)
-//		{
-//			CString fullPath = dlg.GetPathName();
-//			DWORD dwAttrs = GetFileAttributes(fullPath);
-//			if (dwAttrs == INVALID_FILE_ATTRIBUTES || (dwAttrs & FILE_ATTRIBUTE_DIRECTORY))
-//			{
-//
-//				AfxMessageBox(_T("Invalid file path or file does not exist."));
-//				return;
-//			}
-//			if (GetDocument()->OnOpenDocument(dlg.GetPathName()))
-//			{
-//				pFrame = (CMainFrame*)AfxGetMainWnd();
-//				pFrame->AddRecentFile(dlg.GetPathName());
-//				//if (pFrame) pFrame->m_wndWorkSpace.AddRecentFile(strMainFilePath);
-//				if (!m_wndTrackInfoGrid.GetSafeHwnd()) {
-//					m_wndTrackInfoGrid.Create(WS_CHILD | WS_VISIBLE, CRect(0, 0, 0, 0), &m_wndTabCtrl, 1002);
-//					m_wndTabCtrl.AddTab(&m_wndTrackInfoGrid, _T("궤도"), 0);
-//				}
-//				else {
-//					m_wndTrackInfoGrid.UpdateTrackData();
-//				}
-//				//if (!m_wndSignalInfoGrid.GetSafeHwnd()) {
-//				//	m_wndSignalInfoGrid.Create(WS_CHILD | WS_VISIBLE, CRect(0, 0, 0, 0), &m_wndTabCtrl, 1003);
-//				//}
-//				//else {
-//				//	m_wndSignalInfoGrid.UpdateSignalData();
-//				//}
-//				//if (!m_wndSwitchInfoGrid.GetSafeHwnd()) {
-//				//	m_wndSwitchInfoGrid.Create(WS_CHILD | WS_VISIBLE, CRect(0, 0, 0, 0), &m_wndTabCtrl, 1003);
-//				//}
-//				//else {
-//				//	m_wndSwitchInfoGrid.UpdateSignalData();
-//				//}
-//				//if (!m_wndDeviceInfoGrid.GetSafeHwnd()) {
-//				//	m_wndDeviceInfoGrid.Create(WS_CHILD | WS_VISIBLE, CRect(0, 0, 0, 0), &m_wndTabCtrl, 1003);
-//				//}
-//				//else {
-//				//	m_wndDeviceInfoGrid.UpdateSignalData();
-//				//}
-//
-//				// 메인 bin 파일만 읽고 나머지 데이터(IOCard, LogicVariable) 읽기 수행
-//				//if (pDoc->ReadIOCardData(strIOCardPath))
-//				//{
-//				//	m_wndInCardInfoGrid.Create(WS_CHILD | WS_VISIBLE, CRect(0, 0, 0, 0), &m_wndTabCtrl, 1006);
-//				//	m_wndOutCardInfoGrid.Create(WS_CHILD | WS_VISIBLE, CRect(0, 0, 0, 0), &m_wndTabCtrl, 1007);
-//				//}
-//				//ReadLogicVariableData(strLogicPath)
-//				pDoc->ReadLogicVariableData(strLogicPath);
-//				AfxMessageBox(_T("File opened successfully."));
-//
-//				m_wndTrackInfoGrid.EnableColumnAutoSize(TRUE);
-//				//m_wndSignalInfoGrid.EnableColumnAutoSize(TRUE);
-//				//m_wndSwitchInfoGrid.EnableColumnAutoSize(TRUE);
-//				//m_wndDeviceInfoGrid.EnableColumnAutoSize(TRUE);
-//				//m_wndInCardInfoGrid.EnableColumnAutoSize(TRUE);
-//				//m_wndOutCardInfoGrid.EnableColumnAutoSize(TRUE);
-//
-//				//윈탭 추가
-//				//m_wndTabCtrl.AddTab(&m_wndTrackInfoGrid, _T("궤도"), 0);
-//				//m_wndTabCtrl.AddTab(&m_wndSignalInfoGrid, _T("신호기"), 1);
-//				//m_wndTabCtrl.AddTab(&m_wndSwitchInfoGrid, _T("선로전환기"), 2);
-//				//m_wndTabCtrl.AddTab(&m_wndDeviceInfoGrid, _T("폐색,건널목,히터,지장물"), 3);
-//				//m_wndTabCtrl.AddTab(&m_wndInCardInfoGrid, _T("IN Card"), 4);
-//				//m_wndTabCtrl.AddTab(&m_wndOutCardInfoGrid, _T("OUT Card"), 5);
-//			}
-//			else
-//			{
-//				AfxMessageBox(_T("Failed to open the file."));
-//			}
-//		}
-//	}
-//}
+
 void CDataViewExView::OnDataOpen()
 {
 	CFileDialog dlg(TRUE, _T("bin"), NULL, OFN_FILEMUSTEXIST | OFN_HIDEREADONLY, _T("연동 데이터 (*.bin)|*_연동_데이터.bin||"));
@@ -520,19 +431,7 @@ void CDataViewExView::OnDataOpen()
 	{
 		CString strFullPath = dlg.GetPathName();
 
-		// Document의 OnOpenDocument를 직접 호출하거나 AfxGetApp()->OpenDocumentFile을 호출합니다.
-		// 여기서는 현재 문서를 여는 표준 방식을 사용합니다.
-		//if (GetDocument()->OnOpenDocument(strFullPath))
-		//{
-			// 1. 화면(그리드) 데이터 갱신
-			//UpdateGridsData(); // 그리드에 데이터 채우고 Invalidate 하는 함수
-			//if (!m_wndTrackInfoGrid.GetSafeHwnd()) {
-			//	m_wndTrackInfoGrid.Create(WS_CHILD | WS_VISIBLE, CRect(0, 0, 0, 0), &m_wndTabCtrl, 1002);
-			//	m_wndTabCtrl.AddTab(&m_wndTrackInfoGrid, _T("궤도"), 0);
-			//}
-			//else {
-			//	m_wndTrackInfoGrid.UpdateTrackData();
-			//}
+
 		AfxGetApp()->OpenDocumentFile(dlg.GetPathName());
 		// 2. 최근 파일 목록에 추가 (전체 경로 전달)
 		CMainFrame* pFrame = (CMainFrame*)AfxGetMainWnd();
@@ -543,21 +442,9 @@ void CDataViewExView::OnDataOpen()
 
 
 	}
-	//else
-	//{
-	//	AfxMessageBox(_T("파일을 여는데 실패했습니다."));
-	//}
+
 }
-//void CDataViewExView::OnInitialUpdate()
-//{
-//	CView::OnInitialUpdate();
-//
-//	// 1. 최초 1회 그리드 및 탭 껍데기 생성 (중복 생성 방지 포함)
-//	SetupGrids();
-//
-//	// 2. Document에 저장된 데이터 로드 상태(플래그)를 확인하고 그리드 데이터 채우기
-//	UpdateGridsData();
-//}
+
 
 void CDataViewExView::OnInitialUpdate()
 {
@@ -578,9 +465,9 @@ void CDataViewExView::OnInitialUpdate()
 		m_wndSearchEdit.Create(WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, rectDummy, this, IDC_GRID_SEARCH_EDIT);
 		m_wndSearchEdit.SetFont(&FontSetting::FontDungGeunMo);
 		// 빈 칸일 때 회색으로 안내 문구 표시 (입력값 자체에는 영향 없음, 이름만 검색됨을 안내)
-		m_wndSearchEdit.SendMessage(EM_SETCUEBANNER, 0, (LPARAM)(LPCWSTR)_T("이름으로 검색"));
+		m_wndSearchEdit.SendMessage(EM_SETCUEBANNER, 0, (LPARAM)(LPCWSTR)_T("이름 및 명칭 검색"));
 
-		m_wndSearchNextBtn.Create(_T("찾기"), WS_CHILD | WS_VISIBLE, rectDummy, this, IDC_GRID_SEARCH_NEXT_BTN);
+		m_wndSearchNextBtn.Create(_T("검색"), WS_CHILD | WS_VISIBLE, rectDummy, this, IDC_GRID_SEARCH_NEXT_BTN);
 		m_wndSearchNextBtn.SetFont(&FontSetting::FontDungGeunMo);
 	}
 	SetupGrids();
