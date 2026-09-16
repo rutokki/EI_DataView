@@ -60,9 +60,7 @@ public:
 	CString FormatIOPosition(IO_Position pos);
 	//void AddBlockRow();
 	CString GetBlockInfoString(BlockTagInfoType* pData);
-	CString FormatTrackNamesFromByteArray(const Byte_t* pArr, int nSize);
 	CString GetLCListInfoString(LC_CTRL_INFO_TYPE* pData);
-	CString GetTrackName(CString TrackIndex);
 public:
 	void UpdateDeviceData();
 	void PrintGrid(LPCTSTR lpszDocName = NULL);          // 인쇄 실행 함수
