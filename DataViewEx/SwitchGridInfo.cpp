@@ -9,8 +9,8 @@ using namespace CommonUtil;
 
 namespace
 {
-	// [수정] "A호"/"B호" 칼럼용 판정 결과. 첨담/크로싱(NoseKind) 구분은 표시하지 않기로 하고
-	// (사용자 확인: 첨담 제거), 이 스위치가 카드상 A호/B호 중 어느 쪽인지(SWH_CARDTABLE::NoseAB)와
+	// [수정] "A호"/"B호" 칼럼용 판정 결과. 첨단/크로싱(NoseKind) 구분은 표시하지 않기로 하고
+	// (사용자 확인: 첨단 제거), 이 스위치가 카드상 A호/B호 중 어느 쪽인지(SWH_CARDTABLE::NoseAB)와
 	// 그 포트의 명칭(사용자 확인: 명칭 추가)만 판정한다. SwitchInfoType(선로전환기 자체)에는
 	// A호/B호 구분이 없고 카드 쪽에만 있으므로, 스위치의 Table Index(nIdx)와 일치하는 카드 포트를
 	// 찾아서 판정해야 한다.
@@ -109,17 +109,18 @@ void SwitchGridInfo::LoadAllSwitchData()
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
 		pRow->GetItem(0)->SetValue((LPCTSTR)CommonUtil::GetName(item));// 선로전환기 이름
 		SetSwitchType(pRow, item, (Byte_t)nIdx); // 선로전환기 타입/방향/A호B호 정의 1~ 14번 칼럼
-		// [수정] 사용자 확인(명칭 따로/A호 B호 구분 따로)으로 A호/B호가 4개 칼럼(11~14번)으로
-		// 재구성되면서 A점~D점이 15~18번으로 밀림 -> 인덱스 수정.
-		pRow->GetItem(15)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[0], GetDBNameByNum::TrackIdx)); // A점
-		pRow->GetItem(16)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[1], GetDBNameByNum::TrackIdx)); // B점
-		pRow->GetItem(17)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[2], GetDBNameByNum::TrackIdx)); // C점
-		pRow->GetItem(18)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[3], GetDBNameByNum::TrackIdx)); // D점
+		// [수정] GridColumnDefine::GetSwitchColumnInfo() 는 17개(0~16번) 칼럼이고 A호/B호는 11/12번 2개 칼럼임.
+		// A점~D점을 15~18번에 쓰면 17/18번은 존재하지 않아 GetItem() 이 NULL -> 크래시.
+		// 칼럼 정의 그대로 13~16번에 표시.
+		pRow->GetItem(13)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[0], GetDBNameByNum::TrackIdx)); // A점
+		pRow->GetItem(14)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[1], GetDBNameByNum::TrackIdx)); // B점
+		pRow->GetItem(15)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[2], GetDBNameByNum::TrackIdx)); // C점
+		pRow->GetItem(16)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[3], GetDBNameByNum::TrackIdx)); // D점
 
 		// [정리] 로컬 출력(OUT WLR/PDO WR-N/PDO WR-R, Kind.LocalOut) 관련은 매핑 대상에서
 		// 제외하기로 확정함 (사용자 확인: 로컬 출력 제거). item.OutWLR 등은 애초에
 		// 현재 EI_IP_DBStruct_Typedef.h의 SwitchInfoType에 없는 필드이기도 함.
-		// 첨담(A)/크로싱(A)/첨담(B)/크로싱(B) : SetSwitchType()에서 11~14번(A호/A호구분/B호/B호구분)
+		// 첨단(A)/크로싱(A)/첨단(B)/크로싱(B) : SetSwitchType()에서 11~12번(A호/B호: NS-AM/MJ81 판별)
 		// 칼럼으로 대체함 (GridColumnDefine.h 참고)
 		// [제거] 쇄정설비(SwitchLockEquip)/자동정위전환(AutoSwitch) 표시 칼럼은 사용자 확인
 		// (17,18번 칼럼제거)에 따라 제거함. 필요해지면 item.SwitchLockEquip / item.AutoSwitch에서
@@ -154,8 +155,9 @@ void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchIte
 		pRow->GetItem(10)->SetValue(_T("L방향"));
 	}
 	else if (switchItem.Kind.DirKind & SwitchInfoT::DIRKINDBIT1) {
+		// DirKind bit0=1 : 정위 L방향, 반위 R방향 ([수정] 반위가 "B방향" 으로 잘못 표시되던 오타 수정)
 		pRow->GetItem(9)->SetValue(_T("L방향"));
-		pRow->GetItem(10)->SetValue(_T("B방향"));
+		pRow->GetItem(10)->SetValue(_T("R방향"));
 	}
 	else {
 		pRow->GetItem(9)->SetValue(_T("-"));
@@ -205,9 +207,10 @@ void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchIte
 		}
 	}
 
-	// [수정] 사용자 확인(명칭 따로 / A호 B호 구분 따로)에 따라 "A호"/"B호"에 합쳐 쓰던 "명칭(역할)"
-	// 텍스트를 4개 칼럼으로 분리: 11번 A호(명칭만) / 12번 A호구분(NS-AM/MJ81만) /
-	// 13번 B호(명칭만) / 14번 B호구분. 노스가동인 경우에만 SWH_CARDTABLE을 교차 조회해서 채운다.
+	// [수정] "A호"(11번) / "B호"(12번) 칼럼은 GridColumnDefine 정의대로 해당 호가 NS-AM 인지 MJ81 인지
+	// 판별 결과만 표시한다 (명칭은 0번 칼럼). 기존 코드는 11~14번 4개 칼럼(명칭/구분)에 나눠 쓰고 있어
+	// 12번(B호) 칼럼에 A호 구분이, 13/14번(A점/B점) 칼럼에 B호 명칭/구분이 잘못 들어가고 있었음.
+	// 노스가동인 경우에만 SWH_CARDTABLE 을 교차 조회해서 카드상 존재하는 호만 채운다.
 	if (nNoseType != 0)
 	{
 		SwitchNoseSide side = GetSwitchNoseSide(nIdx);
@@ -218,18 +221,21 @@ void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchIte
 			CBCGPGridItem* pItem = pRow->GetItem(nCol);
 			if (pItem == nullptr) return;
 			pItem->SetValue((LPCTSTR)strText);
-			pItem->SetTextColor(RGB(80, 205, 80));
+			pItem->SetTextColor(RGB(0, 0, 0)); // 판별 결과 텍스트가 보이도록 (배경색과 동일하면 글자가 안 보임)
 			pItem->SetBackgroundColor(RGB(80, 205, 80));
 		};
 		if (side.bIsA)
 		{
-			SetCell(11, side.strNameA.IsEmpty() ? (CString)_T("O") : side.strNameA);   // A호 (명칭)
-			SetCell(12, GetNoseSideRoleText(nNoseType, true));                          // A호구분
+			SetCell(11, GetNoseSideRoleText(nNoseType, true));   // A호 : NS-AM / MJ81
 		}
 		if (side.bIsB)
 		{
-			SetCell(13, side.strNameB.IsEmpty() ? (CString)_T("O") : side.strNameB);   // B호 (명칭)
-			SetCell(14, GetNoseSideRoleText(nNoseType, false));                         // B호구분
+			SetCell(12, GetNoseSideRoleText(nNoseType, false));  // B호 : NS-AM / MJ81
+		}
+		// 단동 노스가동(MJ81 단동)은 카드에 A호/B호 구분(NoseAB)이 없으므로 A호 칼럼에 "노스가동" 표시
+		if (nNoseType == CommonUtil::Nose && !side.bIsA && !side.bIsB)
+		{
+			SetCell(11, GetNoseSideRoleText(nNoseType, true));
 		}
 	}
 }

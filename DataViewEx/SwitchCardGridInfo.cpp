@@ -53,12 +53,12 @@ namespace
 	}
 
 	// SWH_CARDTABLE::_CardData_t.NoseKind: MJ81(더블선로전환기) 촉단 구분
-	// ('p' : 첨담, 'f' : 크로싱, 단동인 경우 미사용) - EI_IP_IOCard_Typedef.h 주석 참고
+	// ('p' : 첨단, 'f' : 크로싱, 단동인 경우 미사용) - EI_IP_IOCard_Typedef.h 주석 참고
 	CString GetNoseKindText(Byte_t noseKind)
 	{
 		switch (noseKind)
 		{
-		case 'p': return _T("첨담");
+		case 'p': return _T("첨단");
 		case 'f': return _T("크로싱");
 		default:  return _T("");
 		}
@@ -149,7 +149,7 @@ void SwitchCardGridInfo::LoadAllSwitchCardData()
 			pRow->GetItem(5)->SetValue((LPCTSTR)strNoseAB);             // 노스가동 (A호/B호) - DB 기준 노스가동인 경우만 표시
 			pRow->GetItem(6)->SetValue((LPCTSTR)GetName(portItem));     // 이름
 			pRow->GetItem(7)->SetValue((LPCTSTR)GetTagName(portItem));  // 표찰이름
-			pRow->GetItem(8)->SetValue((LPCTSTR)strNoseKind);           // 노스 종류 (첨담/크로싱) - DB 기준 노스가동인 경우만 표시
+			pRow->GetItem(8)->SetValue((LPCTSTR)strNoseKind);           // 노스 종류 (첨단/크로싱) - DB 기준 노스가동인 경우만 표시
 			pRow->GetItem(9)->SetValue(portItem.Idx);                   // Table Index (숫자 그대로)
 
 			AddRow(pRow, FALSE);
@@ -166,7 +166,7 @@ void SwitchCardGridInfo::UpdateSwitchCardData()
 
 int SwitchCardGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
-	if (CBCGPGridCtrl::OnCreate(lpCreateStruct) == -1)
+	if (CustomBCGGridCtrl::OnCreate(lpCreateStruct) == -1)
 		return -1;
 	auto SwitchCardGrid = GridColumnDefine::GetSwitchCardColumnInfo();
 	for (int i = 0; i < SwitchCardGrid.size(); i++) {

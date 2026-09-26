@@ -4852,30 +4852,11 @@ std::vector<CString> DiffCompareFrame::ConvertInCardInfoText(const std::span<IN_
 			lines.push_back(temp);
 
 			// 4. 종류('T', 'S', 'P', 'L', 'N'), 인덱스, 비트 오프셋
-			CString kindStr = _T("");
-			switch (item.Kind) {
-			case 'V': kindStr = _T("VRD"); break;
-			case 'T': kindStr = _T("궤도"); break;
-			case 'S': kindStr = _T("신호기"); break;
-			case 'P': kindStr = _T("선로전환기"); break;
-			case 'L': kindStr = _T("LMR"); break;
-			case 'R': kindStr = _T("진로선별둥"); break;
-			case 'N': kindStr = _T("역공통"); break;
-			case 'B': kindStr = _T("폐색"); break;
-			case 'C': kindStr = _T("건널목(고장검지)"); break;
-			case 'c': kindStr = _T("건널목(제어건널목)"); break;
-			case 't': kindStr = _T("타역궤도"); break;
-			case 's': kindStr = _T("타역 신호기"); break;
-			case 'p': kindStr = _T("타역 선로전환기"); break;
-			case 'D': kindStr = _T("전차선 절연구간"); break;
-			case 'J': kindStr = _T("지장물"); break;
-			case 'K': kindStr = _T("출발반응등"); break;
-			case 'F': kindStr = _T("기타 고장"); break;
-			case 'W': kindStr = _T("소속역 정보"); break;
-			case 'H': kindStr = _T("열차진입 방지"); break;
-			case 'h': kindStr = _T("히터"); break;
-			case 'E': kindStr = _T("연동장치"); break;
-			}
+			// [수정] 카드 Kind 텍스트를 CommonUtil::GetKindName(EI_IP_IOCard_Typedef.h INP_xxx 기준)으로 통일.
+			//        기존 개별 switch 는 'R'(진로)을 "진로선별둥"(오타/의미 오류)으로 표시하고,
+			//        'U'(진로선별등)/'Y'(임시속도)/'G'(끌림 감시장치) 가 누락되어 있었음
+			CString kindStr = CommonUtil::GetKindName(item.Kind);
+			if (kindStr.IsEmpty() && item.Kind != 0) kindStr.Format(_T("미정의('%c')"), item.Kind);
 			temp.Format(_T("    종류: %s, Table Index: %d, Bit Offset: %d"), (LPCTSTR)kindStr, item.Idx, item.BitNo);
 			lines.push_back(temp);
 		}
@@ -4896,8 +4877,11 @@ void DiffCompareFrame::SetOutCardInfo()
 	CDiffGridPaneView* pLeftView = DYNAMIC_DOWNCAST(CDiffGridPaneView, m_wndSplitter.GetPane(0, 0));
 	CDiffGridRightView* pRightView = DYNAMIC_DOWNCAST(CDiffGridRightView, m_wndSplitter.GetPane(0, 1));
 
-	const bool hasOrigin = dc.HasOriginal();
-	const bool hasDiff = dc.HasDiff();
+	// [수정] DB(HasOriginal/HasDiff) 가 아니라 IO Card 로드 여부로 판단해야 함.
+	//        DB 만 로드되고 ioCard.bin 이 없으면 m_originalCardInfo/m_diffCardInfo 가 nullptr 이라
+	//        GetOriginalOutCardInfo()/GetDiffOutCardInfo() 에서 NULL 역참조(크래시)가 발생했음
+	const bool hasOrigin = dc.HasOriginalCard();
+	const bool hasDiff = dc.HasDiffCard();
 	bool hasLeftData = true;
 	bool hasRightData = true;
 	// 1. 둘 다 데이터가 없으면 중단
@@ -4977,30 +4961,11 @@ std::vector<CString> DiffCompareFrame::ConvertOutCardInfoText(const std::span<OU
 			lines.push_back(temp);
 
 			// 4. 종류, 테이블 인덱스, 비트 오프셋
-			CString kindStr = _T("기타('N')");
-			switch (item.Kind) {
-			case 'V': kindStr = _T("VRD"); break;
-			case 'T': kindStr = _T("궤도"); break;
-			case 'S': kindStr = _T("신호기"); break;
-			case 'P': kindStr = _T("선로전환기"); break;
-			case 'L': kindStr = _T("LMR"); break;
-			case 'R': kindStr = _T("진로선별둥"); break;
-			case 'N': kindStr = _T("역공통"); break;
-			case 'B': kindStr = _T("폐색"); break;
-			case 'C': kindStr = _T("건널목(고장검지)"); break;
-			case 'c': kindStr = _T("건널목(제어건널목)"); break;
-			case 't': kindStr = _T("타역궤도"); break;
-			case 's': kindStr = _T("타역 신호기"); break;
-			case 'p': kindStr = _T("타역 선로전환기"); break;
-			case 'D': kindStr = _T("전차선 절연구간"); break;
-			case 'J': kindStr = _T("지장물"); break;
-			case 'K': kindStr = _T("출발반응등"); break;
-			case 'F': kindStr = _T("기타 고장"); break;
-			case 'W': kindStr = _T("소속역 정보"); break;
-			case 'H': kindStr = _T("열차진입 방지"); break;
-			case 'h': kindStr = _T("히터"); break;
-			case 'E': kindStr = _T("연동장치"); break;
-			}
+			// [수정] 카드 Kind 텍스트를 CommonUtil::GetKindName(EI_IP_IOCard_Typedef.h INP_xxx 기준)으로 통일.
+			//        기존 개별 switch 는 'R'(진로)을 "진로선별둥"(오타/의미 오류)으로 표시하고,
+			//        'U'(진로선별등)/'Y'(임시속도)/'G'(끌림 감시장치) 가 누락되어 있었음
+			CString kindStr = CommonUtil::GetKindName(item.Kind);
+			if (kindStr.IsEmpty() && item.Kind != 0) kindStr.Format(_T("미정의('%c')"), item.Kind);
 			temp.Format(_T("    종류: %s, Table Index: %d, Bit Offset: %d"), (LPCTSTR)kindStr, item.Idx, item.BitNo);
 			lines.push_back(temp);
 
@@ -5018,7 +4983,10 @@ std::vector<CString> DiffCompareFrame::ConvertOutCardInfoText(const std::span<OU
 				case 7: outKindStr = _T("Switch Heater 출력"); break;
 				case 8: outKindStr = _T("전차선 출력"); break;
 				}
-				temp.Format(_T("    PORTOUT: %s (OutGubun: %d)"), (LPCTSTR)outKindStr, item.PORTOUT.OutGubun);
+				// [추가] OutGubun 숫자와 함께 의미(YY/Y/상선/1계 출력 등)도 표시
+				CString outGubunStr = CommonUtil::GetOutGubun(item.PORTOUT.OutKind, item.PORTOUT.OutGubun);
+				temp.Format(_T("    PORTOUT: %s (OutGubun: %d%s%s)"), (LPCTSTR)outKindStr, item.PORTOUT.OutGubun,
+					outGubunStr.IsEmpty() ? _T("") : _T(" "), (LPCTSTR)outGubunStr);
 				lines.push_back(temp);
 			}
 		}

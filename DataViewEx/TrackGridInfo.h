@@ -1,7 +1,7 @@
 #pragma once
 #include "CustomBCGGridCtrl.h"
 
-#define MAX_TRACK_TYPE 18
+#define MAX_TRACK_TYPE 16 // 1~16번 칼럼 (17,18번 상선/하선은 SetItemType 에서 별도 처리)
 
 class TrackGridInfo : public CustomBCGGridCtrl
 {

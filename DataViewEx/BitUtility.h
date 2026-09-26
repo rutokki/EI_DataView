@@ -25,7 +25,8 @@ namespace BlockInfo_BlkKind
 	constexpr BYTE BiDirectional = 0x0B; // 양방향 폐색       (정방향출발 && 역방향장내) 11
 	constexpr BYTE BiDirectional_3Aspect = 0x0C; // 양방향 폐색 3현시 (정방향장내 && 역방향출발)(BR, DR) 12
 
-	constexpr BYTE HighSpeedBlock = 0x10; // 고속선 폐색 16
+	// [수정] 최신 EI_IP_DBStruct_Typedef.h BlkKind 기준 고속선 폐색은 13 (기존 0x10(16)은 EI_define.h 구버전 번호)
+	constexpr BYTE HighSpeedBlock = 0x0D; // 고속선 폐색 13
 }
 
 namespace BlockInfo_BlockAspect
@@ -51,7 +52,7 @@ inline CString DescribeBlkKind_Aspect(BYTE kind, BYTE aspect)
 	case BlockInfo_BlkKind::SingleAuto_3Aspect:
 		switch (aspect)
 		{
-		case BlockInfo_BlockAspect::Aspect5: return _T("단선자동 5현시 BR, YY, Y, G");
+		case BlockInfo_BlockAspect::Aspect5: return _T("단선자동 5현시 BR, YY, Y, YG");
 		default: return _T("단선자동 3현시 BR , DR");
 		}
 	case BlockInfo_BlkKind::DoubleInterlocking:          return _T("복선연동");
@@ -62,9 +63,9 @@ inline CString DescribeBlkKind_Aspect(BYTE kind, BYTE aspect)
 	case BlockInfo_BlkKind::UiwangBlock:
 		switch (aspect)
 		{
-		case BlockInfo_BlockAspect::Aspect3: return _T("의왕 폐색 3현시 HR, EHR, TR, TPSR, eHR");
-		case BlockInfo_BlockAspect::Aspect4:return _T("의왕 폐색 4현시 HR, EHR, TR, TPSR");
-		default:return _T("의왕 폐색 5현시 HR, EHR, TR, TPSR");
+		case BlockInfo_BlockAspect::Aspect3: return _T("의왕 폐색 3현시 HR, BHR, TR, TPSR, eHR");
+		case BlockInfo_BlockAspect::Aspect4:return _T("의왕 폐색 4현시 HR, BHR, TR, TPSR");
+		default:return _T("의왕 폐색 5현시 HR, BHR, TR, TPSR");
 		}
 	case BlockInfo_BlkKind::TriangleBlock:               return _T("삼각선 폐색");
 	case BlockInfo_BlkKind::Cheongnyangni_Mangu:         return _T("청량리 - 망우");
@@ -72,8 +73,9 @@ inline CString DescribeBlkKind_Aspect(BYTE kind, BYTE aspect)
 	case BlockInfo_BlkKind::BiDirectional_3Aspect:
 		switch (aspect)
 		{
-		case BlockInfo_BlockAspect::Aspect5: return _T("양방향 폐색 3현시(정방향장내 && 역방향출발) BR");
-		default:return _T("양방향 폐색 5현시 (정방향장내 && 역방향출발) BR,DR");
+		// [수정] 3현시/5현시 설명이 서로 뒤바뀌어 있었음 (구조체 주석 : 3현시 BR, DR / 5현시 BR)
+		case BlockInfo_BlockAspect::Aspect5: return _T("양방향 폐색 5현시 (정방향장내 && 역방향출발) BR");
+		default:return _T("양방향 폐색 3현시 (정방향장내 && 역방향출발) BR,DR");
 		}
 	case BlockInfo_BlkKind::HighSpeedBlock:              return _T("고속선 폐색");
 	default:                                             return _T("미정의 폐색 종류");
@@ -472,23 +474,27 @@ namespace TrackInfo
 	constexpr BYTE PLATFORM_DOWN_BIT0 = 0x01; // bit0=1 : 하선궤도
 }
 namespace SignalInfo {
+	// [수정] EI_IP_DBStruct_Typedef.h SignalInfoType::Kind 주석과 비트/설명을 일치시킴
+	//  - REPEATS 가 0x00 이라 (x & 0) 으로 중계 신호기가 절대 표시되지 않았고,
+	//    REPEATS2(중계 신호기 포함)는 bit1 인데 bit0(0x01) 로 되어 있어 "중계 신호기" 가 "중계 포함" 칸에 표시되었음
+	//  - SHUNTS1/SHUNTS2, SigDir/SigDir2 의 설명이 구조체 주석과 반대로 적혀 있었음
 	constexpr BYTE MAINSBIT1 = 0x01; // bit0=1 주신호기
-	constexpr BYTE MAINSBIT2 = 0x02; // bit1=1 진로 선별등 있음
-	constexpr BYTE SHUNTD = 0x01; // bit0=1 입환 표기
+	constexpr BYTE MAINSBIT2 = 0x02; // bit1=1 진로 선별등 있음 (입력, 화면표시)
+	constexpr BYTE SHUNTD = 0x01; // bit0=1 입환 표지
 	constexpr BYTE SHUNTS = 0x01; // bit0=1 입환 신호기
-	constexpr BYTE SHUNTS1 = 0x02; // IN 카드 무유도 출력 있음
-	constexpr BYTE SHUNTS2 = 0x04; // OUT 카드 무유도 출력 있음
+	constexpr BYTE SHUNTS1 = 0x02; // bit1=1 OUT 카드에 무유도 출력 있음
+	constexpr BYTE SHUNTS2 = 0x04; // bit2=1 IN 카드에 무유도 입력 있음
 	constexpr BYTE BLOCKS = 0x01; // bit0=1 폐색 신호기
 	constexpr BYTE HOMEBLOCKS = 0x01; // bit0 =1 구내 폐색 신호기
 	constexpr BYTE CALLONS = 0x01; //bit0=1 유도등포함 (주신호기)
-	constexpr BYTE REPEATS = 0x00; // bit0=1 중계 신호기
-	constexpr BYTE REPEATS2 = 0x01; // bit0=1 중계 신호기 포함
+	constexpr BYTE REPEATS = 0x01; // bit0=1 중계 신호기
+	constexpr BYTE REPEATS2 = 0x02; // bit1=1 중계 신호기 포함
 	constexpr BYTE UMHOSIG = 0x01; // bit0=1 엄호신호기
 	constexpr BYTE ISTTB = 0x01; // bit0=1 TTB존재
 	constexpr BYTE CPTSIGNAL = 0x01; // bit0=1 CPT 신호기
 	constexpr BYTE SPCSIGNAL = 0x01; // bit0=1 타역 신호기
-	constexpr BYTE SigDir = 0x02; // bit1=1 하행 신호기
-	constexpr BYTE SigDir2 = 0x04; // bit2=1 상행신호기
+	constexpr BYTE SigDir = 0x02; // bit1=1 상행 신호기
+	constexpr BYTE SigDir2 = 0x04; // bit2=1 하행 신호기
 }
 
 namespace SwitchInfoT {

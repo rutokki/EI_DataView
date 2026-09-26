@@ -1,7 +1,7 @@
 #pragma once
 #include "CustomBCGGridCtrl.h"
 
-#define MAIN_SIGNAL_TYPE 14
+#define MAIN_SIGNAL_TYPE 12 // 신호기 종류 칼럼 1~12번
 
 struct SGBitCheckInfo {
 	UCHAR* pValue; // 변수의 주소

@@ -79,6 +79,9 @@ namespace CommonUtil
 		return GetDBNameByArray(array, static_cast<int>(N), num);
 	}
 	CString GetDBNameByNumber(Byte_t pNum, GetDBNameByNum num);
+	// [추가] 진로(연동도표) 번호는 Word_t(최대 MAX_ROUTE) 라 Byte_t 기반 GetDBNameByNumber 로는 조회할 수 없음
+	//        -> _ILK_Info[RteNo].Name 을 반환 (0/범위초과/이름없음이면 "-")
+	CString GetRouteNameByNumber(Word_t nRteNo);
 
 	/////////////////////////////////////////////////////
 	///////////////  DB STRUCT GetName //////////////////
@@ -134,9 +137,11 @@ namespace CommonUtil
 		return GetSafeString(item.Name1, _countof(item.Name1)) +
 			GetSafeString(item.Name2, _countof(item.Name2));
 	}
+	// [수정] IO_Position 의 ModuleNo 는 "전체 카드 번호", CardNo 는 "랙단위 카드번호(슬롯번호)" 이므로
+	//        C(Card) 에는 ModuleNo, S(Slot) 에는 CardNo 가 들어가야 함 (기존에는 서로 뒤바뀌어 있었음)
 	inline const CString GetIOName(IO_Position io) {
 		CString str;
-		str.Format(_T("R-%02d, C-%02d, S-%02d, P-%02d"), io.Chassis, io.CardNo, io.ModuleNo, io.PortNo);
+		str.Format(_T("R-%02d, C-%02d, S-%02d, P-%02d"), io.Chassis, io.ModuleNo, io.CardNo, io.PortNo);
 		return str;
 	}
 	// SO
@@ -267,7 +272,7 @@ namespace CommonUtil
 		case INP_SLOW_ORDER:
 			return _T("임시속도");
 		case INP_ROUTE_INDICATOR:
-			return _T("진로표시등");
+			return _T("진로선별등");
 		case INP_HEAT_INFO:
 			return _T("히터");
 		case INP_EIS_INFO:
@@ -281,14 +286,18 @@ namespace CommonUtil
 	// 반환값: GetNoseType(Nose/ANSAMBMJ81/AMJ81BNSAM/ABMJ81) 중 하나, 해당 없음/범위초과 시 0
 	int const GetSwitchIsNose(Byte_t Idx);
 
+	// [수정] 기존 코드는 case 마다 break/return 이 없어 Kind 가 맞지 않으면 다음 case 로 fall-through 되어
+	//        (예: OutKind=1, Kind='E' -> "비상정지 출력", OutKind=3, Kind='S' -> "Switch Heater 출력")
+	//        엉뚱한 출력 구분이 표시되었음. OutKind 별로 독립 판정하도록 수정.
+	//        (EI_IP_IOCard_Typedef.h OUT_CARDTABLE::_PORTOUT_t 주석 기준)
 	inline CString GetOUTKInd(Byte_t Kind, Byte_t outKind) {
 		switch (outKind) {
-		case 1: if (Kind == 'S') return _T("신호기 ATS 출력");
-		case 2: if (Kind == 'S') return _T("신호기 후방제어 출력");
-		case 3: if (Kind == 'E') return _T("비상정지 출력");
-		case 4: if (Kind == 'Y') return _T("임시속도 출력");
-		case 5: if (Kind == 'E') return _T("주계 출력");
-		case 6: if (Kind == 'E') return _T("운영모드 출력");
+		case 1: return (Kind == 'S') ? _T("신호기 ATS 출력") : _T("");
+		case 2: return (Kind == 'S') ? _T("신호기 후방폐색 제어출력") : _T("");
+		case 3: return (Kind == 'E') ? _T("비상정지 출력") : _T("");
+		case 4: return (Kind == 'Y') ? _T("임시속도 출력") : _T("");
+		case 5: return (Kind == 'E') ? _T("주계 출력") : _T("");
+		case 6: return (Kind == 'E') ? _T("운영모드 출력") : _T("");
 		case 7: return _T("Switch Heater 출력");
 		case 8: return _T("전차선 출력");
 		default: return _T("");
@@ -419,19 +428,18 @@ namespace CommonUtil
 		CString strTextSBR;
 		switch (blkKind)
 		{
-		case BLK_SINGLE_ABS:            // 단선자동 폐색 (3현시)
-		case BLK_SINGLE_ABS_5ASPECT:    // 단선자동 폐색 (5현시)
-		case BLK_SINGLE_REL:            // 단선연동
+		// [수정] 최신 EI_IP_DBStruct_Typedef.h 의 BlkKind 값 기준으로 변경.
+		//        기존 EI_define.h BLK_xxx(구버전) 기준에서는 13 이 "단선자동 5현시" 라서
+		//        고속선 폐색(13)이 3BR/4BR 로 잘못 출력되고, BLK_EXPRESS(16)는 절대 매칭되지 않았음.
+		//        현시 수(3/5현시)는 BlkKind 가 아니라 BlockAspect 로 구분하므로 종류만 비교함.
+		case BlockInfo_BlkKind::SingleAuto_3Aspect:    // 2 : 단선자동 (3/5현시)
+		case BlockInfo_BlkKind::SingleInterlocking:    // 4 : 단선연동
 			strTextSBR = bIsNorth ? _T("3BR") : _T("4BR");
 			break;
 
-			// case BLK_DOUBLE_REL:
-			// case BLK_DOUBLE_ABS:
-			// case BLK_DOUBLE_ABS_3ASPECT:
-			// case BLK_BOTH_ABS1:
-		case BLK_BOTH_ABS2:             // 양방향 3현시
-		case BLK_BOTH_ABS2_5ASPECT:     // 양방향 5현시
-		case BLK_EXPRESS:               // 고속선 폐색
+			// 1 : 복선자동, 3 : 복선연동, 11 : 양방향(정방향출발 && 역방향장내) 는 출력 없음
+		case BlockInfo_BlkKind::BiDirectional_3Aspect: // 12 : 양방향 (정방향장내 && 역방향출발, 3/5현시)
+		case BlockInfo_BlkKind::HighSpeedBlock:        // 13 : 고속선 폐색
 			strTextSBR = bIsNorth ? _T("3SBR") : _T("4SBR");
 			break;
 		}

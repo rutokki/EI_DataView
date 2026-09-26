@@ -28,8 +28,8 @@ CString CommonUtil::GetDBNameByNumber(Byte_t nNum, GetDBNameByNum num)
 		};
 	switch (num)
 	{
-	case GetDBNameByNum::InterLockIdx:
-		return ExtractName(StructMainData::GetInstance().GetSignalInfo());
+	case GetDBNameByNum::InterLockIdx: // [수정] 기존에는 신호기 테이블을 조회하고 있었음 -> 연동(진로) 테이블
+		return ExtractName(StructMainData::GetInstance().GetInterLockInfo());
 	case GetDBNameByNum::TrackIdx:
 		return ExtractName(StructMainData::GetInstance().GetTrackInfo());
 	case GetDBNameByNum::SignalIdx:
@@ -59,6 +59,21 @@ CString CommonUtil::GetDBNameByNumber(Byte_t nNum, GetDBNameByNum num)
 	}
 
 	return _T("-");
+}
+
+// [추가] 진로 번호(Word_t, 1 ~ MAX_ROUTE-1)로 연동도표(_ILK_Info) 진로 이름 조회
+CString CommonUtil::GetRouteNameByNumber(Word_t nRteNo)
+{
+	if (nRteNo == 0 || nRteNo == 0xFFFF)
+		return _T("-");
+
+	auto ilkList = StructMainData::GetInstance().GetInterLockInfo();
+	if (nRteNo >= ilkList.size())
+		return _T("-");
+
+	CString strName = GetName(ilkList[nRteNo]);
+	if (strName.IsEmpty()) return _T("-");
+	return strName;
 }
 
 // SwitchInfoType(EI_IP_DBStruct_Typedef.h)의 Kind.Nose / Kind.Double 비트플래그를 해석해
@@ -165,8 +180,8 @@ CString CommonUtil::GetOriginNameByNumber(Byte_t nNum, GetDBNameByNum num)
 	// StructMainData 대신 DataComparison의 원본(Original) 데이터를 참조합니다.
 	switch (num)
 	{
-	case GetDBNameByNum::InterLockIdx:
-		return ExtractName(DataComparison::GetInstance().GetOriginalSignal());
+	case GetDBNameByNum::InterLockIdx: // [수정] 신호기 -> 연동(진로) 테이블
+		return ExtractName(DataComparison::GetInstance().GetOriginalInterLock());
 	case GetDBNameByNum::TrackIdx:
 		return ExtractName(DataComparison::GetInstance().GetOriginalTrack());
 	case GetDBNameByNum::SignalIdx:
@@ -219,8 +234,8 @@ CString CommonUtil::GetDiffNameByNumber(Byte_t nNum, GetDBNameByNum num)
 	// DataComparison의 비교군(Diff) 데이터를 참조합니다.
 	switch (num)
 	{
-	case GetDBNameByNum::InterLockIdx:
-		return ExtractName(DataComparison::GetInstance().GetDiffSignal());
+	case GetDBNameByNum::InterLockIdx: // [수정] 신호기 -> 연동(진로) 테이블
+		return ExtractName(DataComparison::GetInstance().GetDiffInterLock());
 	case GetDBNameByNum::TrackIdx:
 		return ExtractName(DataComparison::GetInstance().GetDiffTrack());
 	case GetDBNameByNum::SignalIdx:
@@ -290,9 +305,8 @@ CString CommonUtil::GetDBNameByArray(const Byte_t* pArray, int nSize, GetDBNameB
 	// --------------------------------------------------------
 	switch (num)
 	{
-	case GetDBNameByNum::InterLockIdx:
-		// 신호기 리스트를 가져와서 람다 함수에 전달
-		return ExtractArrayNames(StructMainData::GetInstance().GetSignalInfo());
+	case GetDBNameByNum::InterLockIdx: // [수정] 신호기 -> 연동(진로) 테이블
+		return ExtractArrayNames(StructMainData::GetInstance().GetInterLockInfo());
 	case GetDBNameByNum::TrackIdx:
 		return ExtractArrayNames(StructMainData::GetInstance().GetTrackInfo());
 	case GetDBNameByNum::SignalIdx:
