@@ -24,12 +24,9 @@ namespace BlockInfo_BlkKind
 	constexpr BYTE Cheongnyangni_Mangu = 0x0A; // 청량리 - 망우 10
 	constexpr BYTE BiDirectional = 0x0B; // 양방향 폐색       (정방향출발 && 역방향장내) 11
 	constexpr BYTE BiDirectional_3Aspect = 0x0C; // 양방향 폐색 3현시 (정방향장내 && 역방향출발)(BR, DR) 12
-	// [추가] EI_define.h BLK_SINGLE_ABS_5ASPECT / BLK_BOTH_ABS2_5ASPECT / BLK_DOUBLE_ABS_3ASPECT
-	constexpr BYTE SingleAuto_5Aspect = 0x0D;    // 단선자동 5현시 13
-	constexpr BYTE BiDirectional_5Aspect = 0x0E; // 양방향 폐색 5현시 (정방향장내 && 역방향출발) 14
-	constexpr BYTE DoubleAuto_3Aspect = 0x0F;    // 복선자동 3현시 15
 
-	constexpr BYTE HighSpeedBlock = 0x10; // 고속선 폐색 16
+	// [수정] 최신 EI_IP_DBStruct_Typedef.h BlkKind 기준 고속선 폐색은 13 (기존 0x10(16)은 EI_define.h 구버전 번호)
+	constexpr BYTE HighSpeedBlock = 0x0D; // 고속선 폐색 13
 }
 
 namespace BlockInfo_BlockAspect
@@ -80,9 +77,6 @@ inline CString DescribeBlkKind_Aspect(BYTE kind, BYTE aspect)
 		case BlockInfo_BlockAspect::Aspect5: return _T("양방향 폐색 5현시 (정방향장내 && 역방향출발) BR");
 		default:return _T("양방향 폐색 3현시 (정방향장내 && 역방향출발) BR,DR");
 		}
-	case BlockInfo_BlkKind::SingleAuto_5Aspect:          return _T("단선자동 5현시 BR, YY, Y, YG");
-	case BlockInfo_BlkKind::BiDirectional_5Aspect:       return _T("양방향 폐색 5현시 (정방향장내 && 역방향출발) BR");
-	case BlockInfo_BlkKind::DoubleAuto_3Aspect:          return _T("복선자동 3현시 Y");
 	case BlockInfo_BlkKind::HighSpeedBlock:              return _T("고속선 폐색");
 	default:                                             return _T("미정의 폐색 종류");
 	}

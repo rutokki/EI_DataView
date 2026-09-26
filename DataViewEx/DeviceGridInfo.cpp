@@ -49,10 +49,8 @@ CString DeviceGridInfo::GetBlockKindFromByte(Byte_t byte)
 	case BlockKind::Cheongnyangni_Mangu:       return _T("청량리 폐색");
 	case BlockKind::BiDirectional:             return _T("양방향 폐색\r\n(정방향출발 && 역방향장내)");
 	case BlockKind::BiDirectionalRev:          return _T("양방향 폐색\r\n(정방향장내 && 역방향출발)");
-	case BlockKind::SingleAuto_5Aspect:        return _T("단선자동 (5현시)");
-	case BlockKind::BiDirectionalRev_5Aspect:  return _T("양방향 폐색 5현시\r\n(정방향장내 && 역방향출발)");
-	case BlockKind::DoubleAuto_3Aspect:        return _T("복선자동 (3현시)");
 	case BlockKind::HighSpeedBlock:            return _T("고속선 폐색");
+	case BlockKind::BiDirectionalEtc:          return _T("양방향 폐색 (14 - 세부 종류 미정의)");
 	default:                                   return _T("미정의 폐색");
 	}
 }
@@ -81,10 +79,6 @@ CString DeviceGridInfo::GetBlcokAspectFromByte(Byte_t blkKind, Byte_t aspectCoun
 		if (aspectCount == 3) return _T("양방향 폐색 3현시 (BR, DR)");
 		if (aspectCount == 5) return _T("양방향 폐색 5현시 (BR)"); // DR 없음
 		break;
-	// [추가] EI_define.h 기준 현시 수가 종류에 포함된 폐색 (13/14/15)
-	case BlockKind::SingleAuto_5Aspect:       return _T("단선자동 5현시 (BR, YY, Y, YG)");
-	case BlockKind::BiDirectionalRev_5Aspect: return _T("양방향 폐색 5현시 (BR)");
-	case BlockKind::DoubleAuto_3Aspect:       return _T("복선자동 3현시 (Y)");
 	default:
 		break;
 	}
@@ -500,9 +494,7 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 	// [수정] Bit0은 원본 구조체 주석상 BlkKind=12(정방향장내 && 역방향출발) 전용인데,
 	// 기존 코드는 11(BiDirectional)까지 포함해서 적용하고 있었음. BlkKind=11 전용인 Bit1과
 	// 범위가 겹치지 않도록 분리.
-	// [수정] (정방향장내 && 역방향출발) 양방향 폐색은 3현시(12) / 5현시(14) 두 종류 모두 해당
-	if (pData->BlkKind == static_cast<Byte_t>(BlockKind::BiDirectionalRev) ||
-		pData->BlkKind == static_cast<Byte_t>(BlockKind::BiDirectionalRev_5Aspect)) {
+	if (pData->BlkKind == static_cast<Byte_t>(BlockKind::BiDirectionalRev)) {
 		if (pData->BlockBOthInfo.RevArrSig & 0x01)
 			strFlags += _T(
 				" 역방향출발 폐색 현시이면 장내신호 취급불가"

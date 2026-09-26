@@ -428,19 +428,18 @@ namespace CommonUtil
 		CString strTextSBR;
 		switch (blkKind)
 		{
-		case BLK_SINGLE_ABS:            // 단선자동 폐색 (3현시)
-		case BLK_SINGLE_ABS_5ASPECT:    // 단선자동 폐색 (5현시)
-		case BLK_SINGLE_REL:            // 단선연동
+		// [수정] 최신 EI_IP_DBStruct_Typedef.h 의 BlkKind 값 기준으로 변경.
+		//        기존 EI_define.h BLK_xxx(구버전) 기준에서는 13 이 "단선자동 5현시" 라서
+		//        고속선 폐색(13)이 3BR/4BR 로 잘못 출력되고, BLK_EXPRESS(16)는 절대 매칭되지 않았음.
+		//        현시 수(3/5현시)는 BlkKind 가 아니라 BlockAspect 로 구분하므로 종류만 비교함.
+		case BlockInfo_BlkKind::SingleAuto_3Aspect:    // 2 : 단선자동 (3/5현시)
+		case BlockInfo_BlkKind::SingleInterlocking:    // 4 : 단선연동
 			strTextSBR = bIsNorth ? _T("3BR") : _T("4BR");
 			break;
 
-			// case BLK_DOUBLE_REL:
-			// case BLK_DOUBLE_ABS:
-			// case BLK_DOUBLE_ABS_3ASPECT:
-			// case BLK_BOTH_ABS1:
-		case BLK_BOTH_ABS2:             // 양방향 3현시
-		case BLK_BOTH_ABS2_5ASPECT:     // 양방향 5현시
-		case BLK_EXPRESS:               // 고속선 폐색
+			// 1 : 복선자동, 3 : 복선연동, 11 : 양방향(정방향출발 && 역방향장내) 는 출력 없음
+		case BlockInfo_BlkKind::BiDirectional_3Aspect: // 12 : 양방향 (정방향장내 && 역방향출발, 3/5현시)
+		case BlockInfo_BlkKind::HighSpeedBlock:        // 13 : 고속선 폐색
 			strTextSBR = bIsNorth ? _T("3SBR") : _T("4SBR");
 			break;
 		}
