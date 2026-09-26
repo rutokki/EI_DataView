@@ -26,14 +26,9 @@ CString TrackGridInfo::GetSafeString(const unsigned char* pRawData, int nMaxLeng
 	if (pRawData == nullptr || nMaxLength <= 0)
 		return _T("");
 
-	// unsigned char*를 const char*로 명시적 변환
-	const char* pCharData = reinterpret_cast<const char*>(pRawData);
-
-	// CStringA를 사용하여 nMaxLength만큼만 읽어들임 (바이너리 데이터 안전 처리)
-	CStringA strAnsi(pCharData, nMaxLength);
-
-	// 유니코드 프로젝트라면 자동으로 유니코드로 변환됨
-	return CString(strAnsi);
+	// [수정] CStringA(p, nMaxLength) 는 NUL 이후의 패딩 바이트까지 문자열에 포함시켜
+	//        (예: "1T\0\0...") 검색/비교/인쇄 시 문제가 되므로 NUL 까지만 읽는 공용 함수를 사용
+	return CommonUtil::GetSafeString(pRawData, nMaxLength);
 }
 void TrackGridInfo::LoadAllTrackData()
 {
@@ -46,9 +41,11 @@ void TrackGridInfo::LoadAllTrackData()
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
 		pRow->GetItem(0)->SetValue((LPCTSTR)GetSafeString(item.Name, 20)); // 궤도 명
 		SetItemType(pRow, item); // 1~17번 칼럼 궤도 타입
-		pRow->GetItem(19)->SetValue((LPCTSTR)GetSafeString(trackList[item.LeftTrack].Name, 20)); //left
-		pRow->GetItem(20)->SetValue((LPCTSTR)GetSafeString(trackList[item.RightTrack].Name, 20)); // right
-		CString closeSignal = GetDBNameByArray(item.IncSignal, TrackIdx);
+		// [수정] 0(미설정)/0xFF 인 경우 trackList[0]/[255] 의 이름이 그대로 표시되던 것을 "-" 로 처리
+		pRow->GetItem(19)->SetValue((LPCTSTR)GetDBNameByNumber(item.LeftTrack, TrackIdx)); //left
+		pRow->GetItem(20)->SetValue((LPCTSTR)GetDBNameByNumber(item.RightTrack, TrackIdx)); // right
+		// [수정] IncSignal 은 "궤도에 포함된 신호기 No." 인데 궤도(TrackIdx) 테이블에서 이름을 찾고 있었음
+		CString closeSignal = GetDBNameByArray(item.IncSignal, SignalIdx);
 		pRow->GetItem(21)->SetValue((LPCTSTR)closeSignal);// 관련 신호기
 		pRow->GetItem(22)->SetValue((LPCTSTR)LoadAllSwitches(item.Switch, NO_OF_SWITCH)); // 선로전환기
 		pRow->GetItem(23)->SetValue(item.Equipment.NoOfSignal); // 신호기 수
@@ -70,8 +67,10 @@ void TrackGridInfo::UpdateTrackData()
 
 CString TrackGridInfo::GetBlockName(Byte_t blockNo)
 {
-	auto blockList = StructMainData::GetInstance().GetBlockInfo();
-	return 	GetSafeString(blockList[blockNo].Name, 20);
+	// [수정] 폐색 테이블은 MAX_BLOCK(16)개 뿐이라 blockList[blockNo] 직접 접근 시 범위를 벗어날 수 있었음
+	//        (InBlockNo 가 16 이상/0xFF 이면 out-of-range) -> 범위 검사가 있는 공용 함수 사용
+	if (blockNo == 0 || blockNo == 0xFF) return _T("");
+	return GetDBNameByNumber(blockNo, BlockIdx);
 }
 
 CString TrackGridInfo::GetAppDelayTime(Byte_t& time)
@@ -121,8 +120,6 @@ void TrackGridInfo::SetItemType(CBCGPGridRow* pRow, TrackInfoType& trackItem)
 	{ &trackItem.Kind.SpcTrack,    TrackInfo::SPC_TRACK_BIT0},
 	{ &trackItem.Kind.VirtualTrk,  TrackInfo::VIRTUAL_TRK_BIT0},
 	{ &trackItem.Kind.VirtualTrk,  TrackInfo::VIRTUAL_TRK_BIT1},
-		{&trackItem.PlatForm.Kind.UpTrack, TrackInfo::PLATFORM_UP_BIT0},
-		{&trackItem.PlatForm.Kind.UpTrack, TrackInfo::PLATFORM_DOWN_BIT0}
 	};
 	for (int i = 0; i < MAX_TRACK_TYPE; i++) {
 		if (*checkList[i].pValue & checkList[i].bit) {
@@ -135,6 +132,21 @@ void TrackGridInfo::SetItemType(CBCGPGridRow* pRow, TrackInfoType& trackItem)
 				pItem->SetBackgroundColor(RGB(80, 205, 80)); // 녹색으로 설정
 				//pItem->SetvisualMan(TRUE); // 색상 적용 활성화
 			}
+		}
+	}
+
+	// [수정] 상선/하선(17, 18번 칼럼)
+	// 기존에는 {UpTrack, PLATFORM_UP_BIT0(=0x00)} 으로 비트 검사를 해서 (x & 0) 이 항상 0 -> 상선이 절대 표시되지 않았음.
+	// 구조체 주석 : PlatForm.Kind.PlatForm bit0=1 이면 플랫폼 궤도, UpTrack bit0=0 상선 / bit0=1 하선
+	// -> 플랫폼 궤도인 경우에만 UpTrack bit0 값으로 상선/하선 중 하나를 표시
+	if (trackItem.PlatForm.Kind.PlatForm & TrackInfo::PLATFORM_BIT0)
+	{
+		int nCol = (trackItem.PlatForm.Kind.UpTrack & 0x01) ? 18 : 17;
+		CBCGPGridItem* pItem = pRow->GetItem(nCol);
+		if (pItem != nullptr) {
+			pItem->SetValue(_T("O"));
+			pItem->SetTextColor(RGB(80, 205, 80));
+			pItem->SetBackgroundColor(RGB(80, 205, 80));
 		}
 	}
 }
@@ -152,8 +164,8 @@ CString TrackGridInfo::LoadAllSwitches(const _TrackInfoType_t::_Switch_t* pSwitc
 		// 0이나 0xFF 같은 더미 데이터는 제외 (원치 않으시면 이 줄을 지우세요)
 		if (nSwitchNo == 0 || nSwitchNo == 0xFF) continue;
 
-		CString strNum;
-		strNum.Format(GetSafeString(switchList[nSwitchNo].Name, 20));
+		// [수정] 이름을 Format 의 서식 문자열로 넘기던 것('%' 포함 시 오동작)을 직접 대입으로 변경
+		CString strNum = GetSafeString(switchList[nSwitchNo].Name, 20);
 
 		if (!bFirst) {
 			strResult += _T(", ");

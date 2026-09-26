@@ -36,6 +36,7 @@ int INCardGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		SetColumnAlign(i, HDF_CENTER);
 	}
 	//LoadAllInCardData();
+	return 0; // [수정] 반환값 누락(미정의 동작) - 쓰레기 값이 -1 이면 그리드 창 생성이 실패할 수 있음
 }
 
 void INCardGridInfo::OnSize(UINT nType, int cx, int cy)

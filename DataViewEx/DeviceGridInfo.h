@@ -20,12 +20,14 @@ enum class BlockKind : Byte_t
 	Cheongnyangni_Mangu = 10, // 청량리 폐색 (EI_IP_DBStruct_Typedef.h 원본 주석 기준. 청량리-망우 구간을 가리키는 것으로 보임)
 	BiDirectional = 11, // 양방향 폐색       (정방향출발 && 역방향장내)
 	BiDirectionalRev = 12,// 12 : 양방향 폐색 (정방향장내 && 역방향출발) : 3현시 default
-	HighSpeedBlock = 13,  // 고속선 폐색
-	// [추가] EI_IP_DBStruct_Typedef.h의 BlkKind 최상단 목록(1~13)에는 없지만, 같은 파일의
-	// KindInfo.RevKind 주석에 "양방향 폐색인 경우 설정 (BlkKind=11 or 12 or 14)"라고 14가
-	// 언급되어 있고, DeviceGridInfo.cpp의 LoadAllData()도 14를 양방향 폐색으로 처리하고 있음.
-	// 다만 14의 정확한 명칭/세부 구분은 구조체 어디에도 정의되어 있지 않아 확인이 필요함.
-	BiDirectionalEtc = 14 // 양방향 폐색 계열로 추정 (정확한 명칭 미확인 - 구조체 원본에 14 자체가 이름 없이 언급만 됨)
+	// [수정] EI_define.h 의 BLK_xxx 정의(연동 로직에서 실제 사용하는 값)에 맞춤.
+	// 기존에는 13 을 고속선 폐색으로 보고 15/16 은 "미정의" 로 표시했으나,
+	// EI_define.h 기준 13/14/15 는 현시 수가 다른 자동/양방향 폐색이고 고속선 폐색은 16(BLK_EXPRESS) 임.
+	// (RevKind 주석의 "양방향 폐색인 경우 (BlkKind=11 or 12 or 14)" 와도 일치)
+	SingleAuto_5Aspect = 13,       // BLK_SINGLE_ABS_5ASPECT : 단선자동 폐색 (5현시)
+	BiDirectionalRev_5Aspect = 14, // BLK_BOTH_ABS2_5ASPECT  : 양방향 5현시 (역방향출발 & 정방향 장내)
+	DoubleAuto_3Aspect = 15,       // BLK_DOUBLE_ABS_3ASPECT : 복선자동 폐색 (3현시)
+	HighSpeedBlock = 16            // BLK_EXPRESS            : 고속선 폐색
 };
 
 // [삭제] 기존 enum class BlockAspect(1~8)는 실제 DB 필드 BlockTagInfoType::BlockAspect와

@@ -361,9 +361,12 @@ CString InterlockGridInfo::GetSpecialSwitchStr(const InterLockInfoType& item)
 	for (int i = 0; i < MAX_APP_LOCK; i++) {
 		for (int j = 0; j < MAX_APP_LOCK_SWITCH; j++) {
 			const auto& swh = item.ApproachLock.ApproachTrack[i].ApproachSwitch[j];
-			if (swh.SwitchNo != 0) {
+			// [수정] 구조체 주석상 "쇄정 진로설정 값(RteNo)이 있으면 선로전환기는 무시" 이므로
+			//        SwitchNo 없이 RteNo 만 설정된 조건도 표시해야 함
+			if (swh.SwitchNo != 0 || swh.RteNo != 0) {
 				CString strSwitchName = CommonUtil::GetDBNameByNumber(static_cast<Byte_t>(swh.SwitchNo), GetDBNameByNum::SwitchIdx);
-				CString strRteName = CommonUtil::GetDBNameByNumber(static_cast<Byte_t>(swh.RteNo), GetDBNameByNum::InterLockIdx);
+				// [수정] RteNo 는 Word_t 진로번호 -> Byte_t 로 잘라 신호기 테이블을 조회하던 것을 진로 이름 조회로 변경
+				CString strRteName = CommonUtil::GetRouteNameByNumber(swh.RteNo);
 				temp.Format(_T("궤도IDX[%d] 선로:%s[%d] 진로:%s  "), i, (LPCTSTR)strSwitchName, swh.SwitchDir, (LPCTSTR)strRteName);
 				strAppSwh += temp;
 			}

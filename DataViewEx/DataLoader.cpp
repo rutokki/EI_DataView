@@ -71,18 +71,22 @@ bool DataLoader::LoadIOCard(const CString& filePath, bool isOriginal)
 		auto cardInfo = std::make_unique<CARD_INFO>();
 
 		DWORD dwBytesRead = file.Read(cardInfo.get(), sizeof(CARD_INFO));
-		if (isOriginal) {
-			DataComparison::GetInstance().SetOriginalCardInfo(std::move(cardInfo));
-		}
-		if (!isOriginal) {
-			DataComparison::GetInstance().SetDiffCardInfo(std::move(cardInfo));
-		}
 		file.Close();
 
+		// [수정] 크기가 맞지 않는 데이터를 먼저 저장한 뒤 false 를 반환하고 있어서,
+		//        실패로 처리돼도 HasOriginalCard()/HasDiffCard() 가 true 가 되어 깨진 카드 정보가 비교 화면에 표시되었음
+		//        -> 크기 검증 후 정상일 때만 저장
 		if (dwBytesRead != sizeof(CARD_INFO))
 		{
 			TRACE2("IOCard file size mismatch. Expected: %u, Got: %u\n", sizeof(CARD_INFO), dwBytesRead);
 			return false;
+		}
+
+		if (isOriginal) {
+			DataComparison::GetInstance().SetOriginalCardInfo(std::move(cardInfo));
+		}
+		else {
+			DataComparison::GetInstance().SetDiffCardInfo(std::move(cardInfo));
 		}
 
 		//outCardInfo = cardInfo;

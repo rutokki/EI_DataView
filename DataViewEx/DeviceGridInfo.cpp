@@ -49,8 +49,10 @@ CString DeviceGridInfo::GetBlockKindFromByte(Byte_t byte)
 	case BlockKind::Cheongnyangni_Mangu:       return _T("청량리 폐색");
 	case BlockKind::BiDirectional:             return _T("양방향 폐색\r\n(정방향출발 && 역방향장내)");
 	case BlockKind::BiDirectionalRev:          return _T("양방향 폐색\r\n(정방향장내 && 역방향출발)");
+	case BlockKind::SingleAuto_5Aspect:        return _T("단선자동 (5현시)");
+	case BlockKind::BiDirectionalRev_5Aspect:  return _T("양방향 폐색 5현시\r\n(정방향장내 && 역방향출발)");
+	case BlockKind::DoubleAuto_3Aspect:        return _T("복선자동 (3현시)");
 	case BlockKind::HighSpeedBlock:            return _T("고속선 폐색");
-	case BlockKind::BiDirectionalEtc:          return _T("양방향 폐색 (14 - 세부 종류 미확인)");
 	default:                                   return _T("미정의 폐색");
 	}
 }
@@ -79,6 +81,10 @@ CString DeviceGridInfo::GetBlcokAspectFromByte(Byte_t blkKind, Byte_t aspectCoun
 		if (aspectCount == 3) return _T("양방향 폐색 3현시 (BR, DR)");
 		if (aspectCount == 5) return _T("양방향 폐색 5현시 (BR)"); // DR 없음
 		break;
+	// [추가] EI_define.h 기준 현시 수가 종류에 포함된 폐색 (13/14/15)
+	case BlockKind::SingleAuto_5Aspect:       return _T("단선자동 5현시 (BR, YY, Y, YG)");
+	case BlockKind::BiDirectionalRev_5Aspect: return _T("양방향 폐색 5현시 (BR)");
+	case BlockKind::DoubleAuto_3Aspect:       return _T("복선자동 3현시 (Y)");
 	default:
 		break;
 	}
@@ -170,7 +176,8 @@ void DeviceGridInfo::LoadAllData()
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
 		pRow->SetLinesNumber(3);
 		pRow->GetItem(0)->SetValue(_T("제어 건널목"));
-		CString NameCombine = (GetSafeString(item.Name1, 10) + GetSafeString(item.Name2, 4));
+		// [수정] Name2 는 Byte_t[10] 인데 4바이트만 읽어 이름 뒷부분이 잘렸음 -> 구조체 크기 기준 공용 함수 사용
+		CString NameCombine = GetName(item);
 		pRow->GetItem(1)->SetValue((LPCTSTR)NameCombine);
 		CString strDetails = GetLCListInfoString(const_cast<LC_CTRL_INFO_TYPE*>(&item));
 		pRow->GetItem(4)->SetValue((LPCTSTR)strDetails);
@@ -194,7 +201,8 @@ void DeviceGridInfo::LoadAllData()
 			heaterIndex++;
 			continue;
 		}
-		CString heatName = GetSafeString(item.szHeatName, 10);
+		// [수정] szHeatName 은 Byte_t[20] 인데 10바이트만 읽어 긴 히터 이름이 잘렸음
+		CString heatName = GetName(item);
 		CString dbgStart;
 		dbgStart.Format(_T("[LoadAllData - Heater] 처리 중인 히터 이름: [%s] (인덱스: %d)\n"), (LPCTSTR)heatName, heaterIndex);
 		OutputDebugString(dbgStart);
@@ -243,9 +251,11 @@ void DeviceGridInfo::LoadAllData()
 		pRow->GetItem(0)->SetValue(_T("지장물"));
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
 		CString strResult = _T("");
-		strResult.AppendFormat(_T("낙석 : ") + GetSafeString(item.FallLock.Name, 20) + _T("\r\n"));
-		strResult.AppendFormat(_T("보호 : ") + GetSafeString(item.Proc.Name1, 15) + _T("\r\n"));
-		strResult.AppendFormat(GetSafeString(item.Proc.Name2, 15));
+		// [수정] 이름을 서식 문자열로 넘기던 것('%' 포함 시 오동작) 수정, 보호 Name2 가 라벨 없이 붙던 것 정리
+		strResult.AppendFormat(_T("낙석 : %s\r\n"), (LPCTSTR)GetSafeString(item.FallLock.Name));
+		strResult.AppendFormat(_T("보호 : %s"), (LPCTSTR)GetSafeString(item.Proc.Name1));
+		CString strProc2 = GetSafeString(item.Proc.Name2);
+		if (!strProc2.IsEmpty()) strResult.AppendFormat(_T(", %s"), (LPCTSTR)strProc2);
 		//switch (item.type)
 		//{
 		//case 1:
@@ -274,8 +284,11 @@ void DeviceGridInfo::LoadAllData()
 		pRow->GetItem(0)->SetValue(_T("절연구간"));
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
 		CString strResult = _T("");
-		strResult.AppendFormat(_T("[주계] 1계(%s)"), GetSafeString(item.Unit1.Name, 10));
-		strResult.AppendFormat(_T("[부계] 2계(%s)"), GetSafeString(item.Unit2.Name, 10));
+		// [수정] 1계/2계는 주계/부계 고정이 아니고(운용 Input 여자:1계 주계, 낙하:2계 주계),
+		//        두 항목 사이 줄바꿈이 없었으며 운용(Unit_Act) 입력은 표시되지 않았음
+		strResult.AppendFormat(_T("1계 : %s\r\n"), (LPCTSTR)GetSafeString(item.Unit1.Name));
+		strResult.AppendFormat(_T("2계 : %s\r\n"), (LPCTSTR)GetSafeString(item.Unit2.Name));
+		strResult.AppendFormat(_T("운용 : %s"), (LPCTSTR)GetSafeString(item.Unit_Act.Name));
 		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
 		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화
 		AddRow(pRow, FALSE);
@@ -411,13 +424,15 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 		(LPCTSTR)GetDBNameByArray(pData->DepTrack, 10, TrackIdx),       // 10개짜리 배열 전체 스캔
 		(LPCTSTR)GetDBNameByArray(pData->BlockDepRed.DepBlkRedTrk, 10, TrackIdx));
 	// 상대/후방 폐색 및 신호기 정보
-	strTemp.Format(_T("상대폐색:%d, 후방폐색:%d, 엄호신호:%d, 장내신호:%d\r\n"),
-		pData->OppositeBlock, pData->RearBlock, pData->UmhoSignal, pData->ArrivalSignal);
+	// [수정] 테이블 인덱스 숫자만 표시되던 것을 설비 이름으로 표시
+	strTemp.Format(_T("상대폐색:%s, 후방폐색:%s, 엄호신호:%s, 장내신호:%s\r\n"),
+		(LPCTSTR)GetDBNameByNumber(pData->OppositeBlock, BlockIdx), (LPCTSTR)GetDBNameByNumber(pData->RearBlock, BlockIdx),
+		(LPCTSTR)GetDBNameByNumber(pData->UmhoSignal, SignalIdx), (LPCTSTR)GetDBNameByNumber(pData->ArrivalSignal, SignalIdx));
 	strTotal += strTemp;
 	// ==========================================
 	// 2. 타이머 정보
 	// ==========================================
-	strTemp.Format(_T("[타이머]\r\n폐쇄 출력 최대시간 : %dms [ms] | 입력처리 대기시간 : %dms [ms] | 폐색 취소출력 최대 시간 : %dms [ms]\r\n"),
+	strTemp.Format(_T("[타이머]\r\n폐색 출력 최대시간 : %u ms | 입력처리 대기시간 : %u ms | 폐색 취소출력 최대 시간 : %u ms\r\n"),
 		pData->OutputTm, pData->DelayTm, pData->CancelTm);
 	strTotal += strTemp;
 	// ==========================================
@@ -485,7 +500,9 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 	// [수정] Bit0은 원본 구조체 주석상 BlkKind=12(정방향장내 && 역방향출발) 전용인데,
 	// 기존 코드는 11(BiDirectional)까지 포함해서 적용하고 있었음. BlkKind=11 전용인 Bit1과
 	// 범위가 겹치지 않도록 분리.
-	if (pData->BlkKind == static_cast<Byte_t>(BlockKind::BiDirectionalRev)) {
+	// [수정] (정방향장내 && 역방향출발) 양방향 폐색은 3현시(12) / 5현시(14) 두 종류 모두 해당
+	if (pData->BlkKind == static_cast<Byte_t>(BlockKind::BiDirectionalRev) ||
+		pData->BlkKind == static_cast<Byte_t>(BlockKind::BiDirectionalRev_5Aspect)) {
 		if (pData->BlockBOthInfo.RevArrSig & 0x01)
 			strFlags += _T(
 				" 역방향출발 폐색 현시이면 장내신호 취급불가"

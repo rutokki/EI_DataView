@@ -28,6 +28,7 @@ int OUTCardGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		SetColumnAlign(i, HDF_CENTER);
 	}
 	//LoadAllOutCardData();
+	return 0; // [수정] 반환값 누락(미정의 동작) - 쓰레기 값이 -1 이면 그리드 창 생성이 실패할 수 있음
 }
 
 void OUTCardGridInfo::OnSize(UINT nType, int cx, int cy)
@@ -95,7 +96,10 @@ void OUTCardGridInfo::LoadAllOutCardData()
 			pRow->GetItem(8)->SetValue(portItem.BitNo); //비트번호
 			CString strOutKind = GetOUTKInd(portItem.Kind, portItem.PORTOUT.OutKind);
 			CString strOutGubun = GetOutGubun(portItem.PORTOUT.OutKind, portItem.PORTOUT.OutGubun); // 설비 KInd 별 출력 
-			strOutKind.AppendFormat(_T(" : ") + strOutGubun);
+			// [수정] 출력 구분이 없는 일반 포트에도 " : " 만 표시되던 것 수정,
+			//        문자열을 서식(AppendFormat) 인자로 넘기지 않도록 변경
+			if (!strOutKind.IsEmpty() && !strOutGubun.IsEmpty())
+				strOutKind += _T(" : ") + strOutGubun;
 			pRow->GetItem(9)->SetValue((LPCTSTR)strOutKind);
 
 			AddRow(pRow, FALSE);
