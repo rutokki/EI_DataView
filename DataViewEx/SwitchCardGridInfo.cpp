@@ -141,16 +141,22 @@ void SwitchCardGridInfo::LoadAllSwitchCardData()
 			CString strNoseAB = (nNoseType != 0) ? GetNoseABRoleText(cardItem.NoseAB, nNoseType) : (CString)_T("");
 			CString strNoseKind = (nNoseType != 0) ? GetNoseKindText(portItem.NoseKind) : (CString)_T("");
 
+			// [수정] 이름/표찰이름이 모두 비어있는 포트는 설정되지 않은 포트이므로 Table Index 를 표시하지 않음
+			CString strName = GetName(portItem);
+			CString strTagName = GetTagName(portItem);
+			bool bHasData = !strName.IsEmpty() || !strTagName.IsEmpty();
+
 			pRow->GetItem(0)->SetValue(cardItem.RackNo);              // 랙번호
 			pRow->GetItem(1)->SetValue(cardItem.SlotNo);               // 슬롯번호
 			pRow->GetItem(2)->SetValue((LONG)nCardNo);              // 카드번호
 			pRow->GetItem(3)->SetValue(portItem.PortNo);                // 포트번호
 			pRow->GetItem(4)->SetValue((LPCTSTR)strCardKind);           // 선로전환기 카드 종류
 			pRow->GetItem(5)->SetValue((LPCTSTR)strNoseAB);             // 노스가동 (A호/B호) - DB 기준 노스가동인 경우만 표시
-			pRow->GetItem(6)->SetValue((LPCTSTR)GetName(portItem));     // 이름
-			pRow->GetItem(7)->SetValue((LPCTSTR)GetTagName(portItem));  // 표찰이름
+			pRow->GetItem(6)->SetValue((LPCTSTR)strName);               // 이름
+			pRow->GetItem(7)->SetValue((LPCTSTR)strTagName);            // 표찰이름
 			pRow->GetItem(8)->SetValue((LPCTSTR)strNoseKind);           // 노스 종류 (첨단/크로싱) - DB 기준 노스가동인 경우만 표시
-			pRow->GetItem(9)->SetValue(portItem.Idx);                   // Table Index (숫자 그대로)
+			if (bHasData)
+				pRow->GetItem(9)->SetValue(portItem.Idx);               // Table Index (숫자 그대로)
 			SetDebugIdx(pRow, (int)(&cardItem - SwitchCardInfo.data()), (int)nPort); // [DEBUG-IDX] SWITCHLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);
