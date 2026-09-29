@@ -919,8 +919,11 @@ void InterlockGridInfo::loadInterLockData()
 		pRow->SetLinesNumber(20);
 		//===============================================================
 		// 0열: 번호
+		// [수정] 진로번호 == _ILK_Info/_RTE_Info 배열 인덱스 (EI_define.h 의 ILK_INFO[nRteNo], RTE_INFO[nRteNo] 와 동일).
+		//        기존에는 nIdx + 1 을 표시해서 대항진로/구내폐색 진로 등에 쓰이는 진로번호와 1 씩 어긋났음.
+		//        (내부 함수들은 nIdxCnt 를 받아 -1 해서 쓰므로 nIdxCnt 자체는 그대로 둠)
 		CString tmpStr;
-		tmpStr.Format(_T("%d"), nIdxCnt);
+		tmpStr.Format(_T("%d"), nIdx);
 		pRow->GetItem(nCol++)->SetValue((LPCTSTR)tmpStr);
 		//===============================================================
 		// 1열: 진로 이름
@@ -963,7 +966,7 @@ void InterlockGridInfo::loadInterLockData()
 		CBCGPGridItem* pDataItem = pRow->GetItem(2);
 		pDataItem->SetValue((LPCTSTR)strData);
 		pDataItem->SetMultiline(TRUE);
-		SetDebugIdx(pRow, nIdx); // [DEBUG-IDX] _ILK_Info / _RTE_Info 배열 인덱스 (0열 "번호" 는 nIdx + 1)
+		SetDebugIdx(pRow, nIdx); // [DEBUG-IDX] _ILK_Info / _RTE_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 }
