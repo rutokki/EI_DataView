@@ -91,14 +91,20 @@ void SignalCardGridInfo::LoadAllSignalCardData()
 			// 신호기 카드 종류/이름/표찰이름/Table Index)와 어긋나 있던 컬럼 인덱스를 맞춤.
 			// 기존 코드는 4~8번에 값이 한 칸씩 밀려 들어가고, 존재하지 않는 8번 컬럼에
 			// (LPCTSTR)portItem.Idx (Byte_t를 문자열 포인터로 캐스팅) 를 대입해 접근 위반 위험이 있었음.
+			// [수정] 이름/표찰이름이 모두 비어있는 포트는 설정되지 않은 포트이므로 Table Index 를 표시하지 않음
+			CString strName = GetName(portItem);
+			CString strTagName = GetTagName(portItem);
+			bool bHasData = !strName.IsEmpty() || !strTagName.IsEmpty();
+
 			pRow->GetItem(0)->SetValue(cardItem.RackNo);              // 랙번호
 			pRow->GetItem(1)->SetValue(cardItem.SlotNo);               // 슬롯번호
 			pRow->GetItem(2)->SetValue((LONG)nCardNo);              // 카드번호
 			pRow->GetItem(3)->SetValue(portItem.PortNo);                // 포트번호
 			pRow->GetItem(4)->SetValue((LPCTSTR)strCardKind); // 신호기 카드 종류 (3->4등형 신호기, 4->2등형 신호기)
-			pRow->GetItem(5)->SetValue((LPCTSTR)GetName(portItem));     // 이름
-			pRow->GetItem(6)->SetValue((LPCTSTR)GetTagName(portItem));  // 표찰이름
-			pRow->GetItem(7)->SetValue(portItem.Idx);                   // Table Index (숫자 그대로, 문자열 캐스팅 금지)
+			pRow->GetItem(5)->SetValue((LPCTSTR)strName);               // 이름
+			pRow->GetItem(6)->SetValue((LPCTSTR)strTagName);            // 표찰이름
+			if (bHasData)
+				pRow->GetItem(7)->SetValue(portItem.Idx);               // Table Index (숫자 그대로, 문자열 캐스팅 금지)
 			SetDebugIdx(pRow, (int)(&cardItem - SignalCardInfo.data()), (int)nPort); // [DEBUG-IDX] SIGNALLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);

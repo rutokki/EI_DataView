@@ -99,15 +99,24 @@ void INCardGridInfo::LoadAllInCardData()
 			CBCGPGridRow* pRow = CreateRow(GetColumnCount());
 
 			// 각 컬럼 설정
+			// [수정] 이름/비트이름이 모두 비어있는 포트는 설정되지 않은 포트이므로 Table Index / BitNo 를 표시하지 않음
+			//        (값이 0 으로 채워져 있어 설정된 포트처럼 보였음)
+			CString strName = GetName(portItem);
+			CString strBitName = GetBitName(portItem);
+			bool bHasData = !strName.IsEmpty() || !strBitName.IsEmpty();
+
 			pRow->GetItem(0)->SetValue(cardItem.RackNo);                    // Rack No
 			pRow->GetItem(1)->SetValue(cardItem.SlotNo);                    // Slot No
 			pRow->GetItem(2)->SetValue((LONG)nCardNo);                      // Card No
 			pRow->GetItem(3)->SetValue(portItem.PortNo);                    // Port No
-			pRow->GetItem(4)->SetValue((LPCTSTR)GetName(portItem));         // 이름
-			pRow->GetItem(5)->SetValue((LPCTSTR)GetBitName(portItem));      // 비트이름
+			pRow->GetItem(4)->SetValue((LPCTSTR)strName);                   // 이름
+			pRow->GetItem(5)->SetValue((LPCTSTR)strBitName);                // 비트이름
 			pRow->GetItem(6)->SetValue((LPCTSTR)GetKindName(portItem.Kind));// 종류
-			pRow->GetItem(7)->SetValue(portItem.Idx);                       // Table Index
-			pRow->GetItem(8)->SetValue(portItem.BitNo);                     // BitNo
+			if (bHasData)
+			{
+				pRow->GetItem(7)->SetValue(portItem.Idx);                   // Table Index
+				pRow->GetItem(8)->SetValue(portItem.BitNo);                 // BitNo
+			}
 			SetDebugIdx(pRow, (int)(&cardItem - inCardInfo.data()), (int)nPort); // [DEBUG-IDX] INCARDLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);
