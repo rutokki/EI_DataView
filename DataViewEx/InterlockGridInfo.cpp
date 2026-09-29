@@ -27,11 +27,12 @@ int InterlockGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	auto interLcokInfo = GridColumnDefine::GetInterLockingDataColumnInfo();
 	for (int i = 0; i < interLcokInfo.size(); i++) {
 		InsertColumn(i, interLcokInfo[i].columnName, interLcokInfo[i].columnWidth);
-		if (!(i == interLcokInfo.size() - 1)) {
-			SetHeaderAlign(i, HDF_CENTER);
+		// [수정] 헤더는 모두 가운데 정렬, 셀은 멀티라인 "Data" 칼럼만 기본(왼쪽) 정렬.
+		//        기존에는 "마지막 칼럼" 을 Data 로 가정했고, 존재하지 않는 칼럼(size())에 SetHeaderAlign 을 호출했음
+		SetHeaderAlign(i, HDF_CENTER);
+		if (interLcokInfo[i].columnName != _T("Data")) {
 			SetColumnAlign(i, HDF_CENTER);
 		}
-		SetHeaderAlign(interLcokInfo.size(), HDF_CENTER);
 	}
 	//loadInterLockData();
 	return 0;
@@ -341,7 +342,8 @@ CString InterlockGridInfo::GetUhoInfoStr(const InterLockInfoType& item)
 	CString str, temp;
 	str.Format(_T("유효장 : %s ~ %s (해정시간:%d초, 착점해정설정:%d) 궤도:"),
 		(LPCTSTR)strFirst, (LPCTSTR)strLast, item.UhoInfo.LockTime, (item.UhoInfo.UhoRelease & 0x01));
-	for (int i = 0; i < 8; i++) {
+	// [수정] 유효장 궤도는 MAX_CNT_EF_TRACK(10)개인데 8개까지만 표시하고 있었음
+	for (int i = 0; i < _countof(item.UhoInfo.TrackNo); i++) {
 		if (item.UhoInfo.TrackNo[i] != 0) {
 			CString strTrkName = CommonUtil::GetDBNameByNumber(static_cast<Byte_t>(item.UhoInfo.TrackNo[i]), GetDBNameByNum::TrackIdx);
 			temp.Format(_T("%s "), (LPCTSTR)strTrkName);
@@ -389,7 +391,8 @@ CString InterlockGridInfo::GetSpecialSwitchStr(const InterLockInfoType& item)
 CString InterlockGridInfo::GetSpcStateStr(const InterLockInfoType& item)
 {
 	CString strSpc, temp;
-	for (int i = 0; i < 5; i++)
+	// [수정] 타역설비 조건은 MAX_CNT_SPC_STATE(10)개인데 5개까지만 표시하고 있었음
+	for (int i = 0; i < _countof(item.SpcState); i++)
 	{
 		if (item.SpcState[i].SpcTrack == 0 && item.SpcState[i].SpcSignal == 0 && item.SpcState[i].SpcSwitch == 0 && item.SpcState[i].SpcFaultIDX == 0) continue;
 		strSpc += _T("[");
@@ -442,7 +445,7 @@ CString InterlockGridInfo::GetOppositeRouteStr(UINT nRteNo)
 		if (inhibitRteNo < ilkSpan.size())
 		{
 			CString szEquipTmp;
-			szEquipTmp.Format(_T(" %s"), (LPCTSTR)CString(ilkSpan[inhibitRteNo].Name));
+			szEquipTmp.Format(_T(" %s"), (LPCTSTR)GetName(ilkSpan[inhibitRteNo]));
 			strEquipList += szEquipTmp;
 		}
 	}
@@ -587,7 +590,8 @@ CString InterlockGridInfo::GetRouteInfo_SignalTrack(UINT nRteNo)
 	// [추가] FrontLinkRteNo: 전방신호 연계진로(전방 신호기 현시에 따라 이 진로의 신호현시가 좌우됨)
 	if (rteItem.FrontLinkRteNo > 0)
 	{
-		strTmp.Format(_T(" (전방연계진로:%d)"), rteItem.FrontLinkRteNo);
+		// [수정] 번호만 표시하던 것을 진로 이름과 함께 표시
+		strTmp.Format(_T(" (전방연계진로:%d %s)"), rteItem.FrontLinkRteNo, (LPCTSTR)CommonUtil::GetRouteNameByNumber(rteItem.FrontLinkRteNo));
 		strEquipList += strTmp;
 	}
 	// 3. 전방 신호기
@@ -619,14 +623,17 @@ CString InterlockGridInfo::GetRouteInfo_SignalTrack(UINT nRteNo)
 		if (rteItem.BlockSigRteNo[0] > 0)
 		{
 			strEquipList += _T(", 구내폐색: ");
-			for (int i = 0; i < 6; i++)
+			// [수정] BlockSigRteNo 는 MAX_HOME_BLOCK_ROUTE(20)개인데 6개까지만 표시하고 있었음.
+			//        또한 진로번호 == _ILK_Info 배열 인덱스이므로(대항진로 InhibitRteNo, TestRightView 와 동일)
+			//        "-1" 을 하면 바로 앞 진로의 이름이 표시되었음
+			for (int i = 0; i < _countof(rteItem.BlockSigRteNo); i++)
 			{
 				if (0 == rteItem.BlockSigRteNo[i])
 					continue;
-				int targetIdx = rteItem.BlockSigRteNo[i] - 1;
+				int targetIdx = rteItem.BlockSigRteNo[i];
 				if (targetIdx >= 0 && targetIdx < (int)ilkSpan.size())
 				{
-					CString strIlkName(ilkSpan[targetIdx].Name);
+					CString strIlkName = GetName(ilkSpan[targetIdx]);
 					strTmp.Format(_T("%s "), (LPCTSTR)strIlkName);
 					strEquipList += strTmp;
 				}
@@ -636,10 +643,11 @@ CString InterlockGridInfo::GetRouteInfo_SignalTrack(UINT nRteNo)
 	// 7. 유도 진로
 	if (rteItem.UdoRteNo > 0)
 	{
-		int targetIdx = rteItem.UdoRteNo - 1;
+		// [수정] 진로번호 == _ILK_Info 배열 인덱스 ("-1" 하면 앞 진로 이름이 표시됨)
+		int targetIdx = rteItem.UdoRteNo;
 		if (targetIdx >= 0 && targetIdx < (int)ilkSpan.size())
 		{
-			CString strUdoName(ilkSpan[targetIdx].Name);
+			CString strUdoName = GetName(ilkSpan[targetIdx]);
 			strTmp.Format(_T(", 유도 진로: %s"), (LPCTSTR)strUdoName);
 			strEquipList += strTmp;
 		}
@@ -664,7 +672,7 @@ CString InterlockGridInfo::GetRouteInfo_SignalTrack(UINT nRteNo)
 		strEquipList += strTmp;
 		if (rteItem.AutoRteCtrl.PreRteNo > 0)
 		{
-			strTmp.Format(_T(",선행진로:%d"), rteItem.AutoRteCtrl.PreRteNo);
+			strTmp.Format(_T(",선행진로:%d %s"), rteItem.AutoRteCtrl.PreRteNo, (LPCTSTR)CommonUtil::GetRouteNameByNumber(rteItem.AutoRteCtrl.PreRteNo));
 			strEquipList += strTmp;
 		}
 		for (int i = 0; i < 3; i++)
@@ -911,12 +919,16 @@ void InterlockGridInfo::loadInterLockData()
 		pRow->SetLinesNumber(20);
 		//===============================================================
 		// 0열: 번호
+		// [수정] 진로번호 == _ILK_Info/_RTE_Info 배열 인덱스 (EI_define.h 의 ILK_INFO[nRteNo], RTE_INFO[nRteNo] 와 동일).
+		//        기존에는 nIdx + 1 을 표시해서 대항진로/구내폐색 진로 등에 쓰이는 진로번호와 1 씩 어긋났음.
+		//        (내부 함수들은 nIdxCnt 를 받아 -1 해서 쓰므로 nIdxCnt 자체는 그대로 둠)
 		CString tmpStr;
-		tmpStr.Format(_T("%d"), nIdxCnt);
+		tmpStr.Format(_T("%d"), nIdx);
 		pRow->GetItem(nCol++)->SetValue((LPCTSTR)tmpStr);
 		//===============================================================
 		// 1열: 진로 이름
-		CString strName(interLockData[nIdx].Name);
+		// [수정] CString(Byte_t*) 는 NUL 이 없는 20자 이름이면 배열 밖까지 읽음 -> 길이 제한 공용 함수 사용
+		CString strName = GetName(interLockData[nIdx]);
 		pRow->GetItem(nCol++)->SetValue((LPCTSTR)strName);
 		//===============================================================
 		// 2열: 상세 내용들
@@ -954,6 +966,7 @@ void InterlockGridInfo::loadInterLockData()
 		CBCGPGridItem* pDataItem = pRow->GetItem(2);
 		pDataItem->SetValue((LPCTSTR)strData);
 		pDataItem->SetMultiline(TRUE);
+		SetDebugIdx(pRow, nIdx); // [DEBUG-IDX] _ILK_Info / _RTE_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 }

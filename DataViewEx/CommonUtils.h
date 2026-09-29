@@ -453,6 +453,26 @@ namespace CommonUtil
 
 		return strTextSBR;
 	}
+	// [DEBUG-IDX] 디버깅용 : 각 그리드 마지막 칼럼(IDX)에 해당 설비의 배열 인덱스를 표시. 확인 후 제거 예정
+	//             (제거 시 "[DEBUG-IDX]" 로 검색하여 GridColumnDefine.h 의 칼럼 정의와 호출부를 함께 삭제)
+	inline void SetDebugIdx(CBCGPGridRow* pRow, const CString& strIdx)
+	{
+		if (pRow == nullptr || pRow->GetItemCount() <= 0) return;
+		CBCGPGridItem* pItem = pRow->GetItem(pRow->GetItemCount() - 1);
+		if (pItem != nullptr) pItem->SetValue((LPCTSTR)strIdx);
+	}
+	inline void SetDebugIdx(CBCGPGridRow* pRow, int nIdx)
+	{
+		CString str;
+		str.Format(_T("%d"), nIdx);
+		SetDebugIdx(pRow, str);
+	}
+	inline void SetDebugIdx(CBCGPGridRow* pRow, int nCardIdx, int nPortIdx) // 카드 : [카드 배열 인덱스]-[포트 배열 인덱스]
+	{
+		CString str;
+		str.Format(_T("%d-%d"), nCardIdx, nPortIdx);
+		SetDebugIdx(pRow, str);
+	}
 	CString GetOriginNameByNumber(Byte_t nNum, GetDBNameByNum num);
 	CString GetDiffNameByNumber(Byte_t nNum, GetDBNameByNum num);
 }

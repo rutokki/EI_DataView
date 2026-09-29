@@ -78,7 +78,8 @@ public:
 			{_T("신호기 수"), 30}, {_T("선로전환기 수"), 35},
 			{_T("폐색"), 25},
 
-			{_T("복구시간"), 30}
+			{_T("복구시간"), 30},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 
@@ -92,7 +93,8 @@ public:
 			{_T("타역"), 25},{_T("현시 수"), 25},{_T("진로 수"),25},{_T("신호기 궤도"),35},
 			{_T("전방신호기"), 40},{_T("후방폐색현시"), 40},{_T("ATS출력"), 30},{_T("후방출력"), 30},
 			// [추가] SignalInfoType 의 RepeatSigNo(중계 신호기 번호), Kind.SigDir(상행/하행) 표시용
-			{_T("중계 신호기"), 40},{_T("방향"), 30}
+			{_T("중계 신호기"), 40},{_T("방향"), 30},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 	static std::vector<ColumnInfo> GetSwitchColumnInfo()
@@ -115,25 +117,29 @@ public:
 			 // 이 스위치가 카드상 A호/B호 중 어느 쪽인지 판별한 뒤, 그 쪽이 NS-AM인지 MJ81인지(단동인
 			 // 경우 "노스가동")만 채움 (노스가동인 경우만).
 			 {_T("A호"), 60}, {_T("B호"), 60},
-			 {_T("A점"), 25}, {_T("B점"), 25}, {_T("C점"), 25}, {_T("D점"), 25}
+			 {_T("A점"), 25}, {_T("B점"), 25}, {_T("C점"), 25}, {_T("D점"), 25},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 	static std::vector<ColumnInfo> GetDeviceColumnInfo()
 	{
 		return {
-			{_T("분류") ,30}, {_T("명칭"), 40}, {_T("구분"), 80}, {_T("종류"), 80}, {_T("Data"), 450}
+			{_T("분류") ,30}, {_T("명칭"), 40}, {_T("구분"), 80}, {_T("종류"), 80}, {_T("Data"), 450},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 	static std::vector<ColumnInfo> GetINCardColumnInfo() {
 		return {
 			{_T("Rack No"), 20}, {_T("Slot No"), 20}, {_T("Card No"), 20}, {_T("Port No"), 20},
-			{_T("이름"), 70}, {_T("비트이름"), 70}, {_T("종류"), 100}, {_T("Table Index"), 55 }, {_T("BitNo"), 55}
+			{_T("이름"), 70}, {_T("비트이름"), 70}, {_T("종류"), 100}, {_T("Table Index"), 55 }, {_T("BitNo"), 55},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 	static std::vector<ColumnInfo> GetOUTCardColumnInfo() {
 		return {
 			 {_T("Rack No"), 20}, {_T("Slot No"), 20}, {_T("Card No"), 20}, {_T("Port No"), 20},
-			{_T("이름"), 70}, {_T("비트이름"), 70}, {_T("종류"), 50}, {_T("Table Index"), 55}, {_T("BitNo"), 55}, {_T("출력 구분"), 100}
+			{_T("이름"), 70}, {_T("비트이름"), 70}, {_T("종류"), 50}, {_T("Table Index"), 55}, {_T("BitNo"), 55}, {_T("출력 구분"), 100},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 		//	return {
 		// {_T("Rack No"), 20}, {_T("Slot No"), 20}, {_T("Card No"), 20}, {_T("Port No"), 20},
@@ -143,14 +149,16 @@ public:
 	static std::vector<ColumnInfo> GetSignalCardColumnInfo() {
 		return {
 			 {_T("Rack No"), 20}, {_T("Slot No"), 20}, {_T("Card No"), 20},{_T("Port No"), 20} , {_T("신호기 카드 종류"), 60}
-			, {_T("이름"), 50}, {_T("표찰이름"), 50}, {_T("Table Index"), 55}
+			, {_T("이름"), 50}, {_T("표찰이름"), 50}, {_T("Table Index"), 55},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 	static std::vector<ColumnInfo> GetSwitchCardColumnInfo() {
 		return {
 			 {_T("Rack No"), 20}, {_T("Slot No"), 20}, {_T("Card No"), 20},{_T("Port No"), 20},  {_T("선로전환기 카드 종류"), 70}
 			,{_T("노스가동"),30},{_T("이름"), 50}, { _T("표찰이름"), 50 },
-			{ _T("노스 종류"), 100 }, { _T("Table Index"), 55 }
+			{ _T("노스 종류"), 100 }, { _T("Table Index"), 55 },
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 	//static std::vector<ColumnInfo> GetPDOCardColumnInfo() {
@@ -163,12 +171,14 @@ public:
 		return {
 			{_T("로직IDX"), 35},{_T("명칭"), 100},{_T("연동구분"), 55},{_T("연동IDX"), 35},
 			{_T("Card Type"), 45},{_T("Rack No"), 35},{_T("Slot No"), 35},{_T("Port No"), 35},{_T("로직구분"), 55},
-			{_T("로직Type"), 45},{_T("Timer"), 70},{_T("Time"), 35},{_T("DB_Time"), 35}
+			{_T("로직Type"), 45},{_T("Timer"), 70},{_T("Time"), 35},{_T("DB_Time"), 35},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 	static std::vector<ColumnInfo> GetInterLockingDataColumnInfo() {
 		return {
-			{_T("번호"), 25},{_T("진로명"), 40},{_T("Data"), 300}
+			{_T("번호"), 25},{_T("진로명"), 40},{_T("Data"), 300},
+			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 
 	}

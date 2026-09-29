@@ -101,6 +101,7 @@ void OUTCardGridInfo::LoadAllOutCardData()
 			if (!strOutKind.IsEmpty() && !strOutGubun.IsEmpty())
 				strOutKind += _T(" : ") + strOutGubun;
 			pRow->GetItem(9)->SetValue((LPCTSTR)strOutKind);
+			SetDebugIdx(pRow, (int)(&cardItem - outCardInfo.data()), (int)nPort); // [DEBUG-IDX] OUTCARDLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);
 		}
