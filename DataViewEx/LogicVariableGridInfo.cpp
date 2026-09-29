@@ -43,7 +43,8 @@ void LogicVariableGridInfo::LoadAllLogicData()
 {
 	auto logicInfo = StructMainData::GetInstance().GetLogicVariableVec();
 	if (logicInfo.size() == 0) return;
-	for (auto& item : logicInfo) {
+	for (size_t nVecIdx = 0; nVecIdx < logicInfo.size(); nVecIdx++) {
+		auto& item = logicInfo[nVecIdx];
 		if (!item) continue;
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
 		pRow->GetItem(0)->SetValue(item->nLogicIdx); // 로직IDX
@@ -72,6 +73,7 @@ void LogicVariableGridInfo::LoadAllLogicData()
 		pRow->GetItem(11)->SetValue(item->TimeValue);
 		//DB_Time TimeValueDB
 		pRow->GetItem(12)->SetValue(item->TimeValueDB);
+		SetDebugIdx(pRow, (int)nVecIdx); // [DEBUG-IDX] LogicVariable.Dat 레코드 순서(0부터)
 		AddRow(pRow, FALSE);
 	}
 }

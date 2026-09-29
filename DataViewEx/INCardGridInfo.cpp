@@ -108,6 +108,7 @@ void INCardGridInfo::LoadAllInCardData()
 			pRow->GetItem(6)->SetValue((LPCTSTR)GetKindName(portItem.Kind));// 종류
 			pRow->GetItem(7)->SetValue(portItem.Idx);                       // Table Index
 			pRow->GetItem(8)->SetValue(portItem.BitNo);                     // BitNo
+			SetDebugIdx(pRow, (int)(&cardItem - inCardInfo.data()), (int)nPort); // [DEBUG-IDX] INCARDLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);
 		}

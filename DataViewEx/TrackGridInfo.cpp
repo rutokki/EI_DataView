@@ -53,6 +53,7 @@ void TrackGridInfo::LoadAllTrackData()
 		pRow->GetItem(25)->SetValue((LPCTSTR)GetBlockName(item.InBlockNo)); // 폐색
 
 		pRow->GetItem(26)->SetValue((LPCTSTR)GetAppDelayTime(item.TrkDelayTime.RecvTime)); // 복구Delay
+		SetDebugIdx(pRow, (int)(&item - trackList.data())); // [DEBUG-IDX] _TRK_Info 배열 인덱스
 
 		AddRow(pRow, FALSE);
 	}

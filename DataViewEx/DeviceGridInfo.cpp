@@ -99,12 +99,13 @@ int DeviceGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	std::vector<ColumnInfo> deviceColumnInfo = GridColumnDefine::GetDeviceColumnInfo();
 	for (int i = 0; i < deviceColumnInfo.size(); i++) {
 		InsertColumn(i, deviceColumnInfo[i].columnName, deviceColumnInfo[i].columnWidth);
-		if (!(i == deviceColumnInfo.size() - 1)) {
-			SetHeaderAlign(i, HDF_CENTER);
+		// [수정] 헤더는 모두 가운데 정렬, 셀은 멀티라인 "Data" 칼럼만 기본(왼쪽) 정렬.
+		//        기존에는 "마지막 칼럼" 을 Data 로 가정했고, 존재하지 않는 칼럼(size())에 SetHeaderAlign 을 호출했음
+		SetHeaderAlign(i, HDF_CENTER);
+		if (deviceColumnInfo[i].columnName != _T("Data")) {
 			SetColumnAlign(i, HDF_CENTER);
 		}
 	}
-	SetHeaderAlign(deviceColumnInfo.size(), HDF_CENTER);
 	//InsertGroupColumn(0, 0);
 	//LoadAllData();
 	AdjustLayout();
@@ -143,6 +144,7 @@ void DeviceGridInfo::LoadAllData()
 		CString strDetails = GetBlockInfoString(const_cast<BlockTagInfoType*>(&item));
 		pRow->GetItem(4)->SetValue((LPCTSTR)strDetails);
 		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화
+		SetDebugIdx(pRow, (int)(&item - blockList.data())); // [DEBUG-IDX] _BLK_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 	//==========================================
@@ -157,6 +159,7 @@ void DeviceGridInfo::LoadAllData()
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
 		pRow->GetItem(0)->SetValue(_T("건널목")); // "건널목" 그룹으로 묶임
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
+		SetDebugIdx(pRow, (int)(&item - crossingList.data())); // [DEBUG-IDX] _LCS_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 	//==========================================
@@ -176,6 +179,7 @@ void DeviceGridInfo::LoadAllData()
 		CString strDetails = GetLCListInfoString(const_cast<LC_CTRL_INFO_TYPE*>(&item));
 		pRow->GetItem(4)->SetValue((LPCTSTR)strDetails);
 		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화
+		SetDebugIdx(pRow, (int)(&item - LClist.data())); // [DEBUG-IDX] _LC_CTRL_INFO 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 	// ==========================================
@@ -229,6 +233,7 @@ void DeviceGridInfo::LoadAllData()
 		}
 		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
 		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화
+		SetDebugIdx(pRow, (int)(&item - heaterList.data())); // [DEBUG-IDX] _Heat_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 		heaterIndex++;
 	}
@@ -263,6 +268,7 @@ void DeviceGridInfo::LoadAllData()
 		//}
 		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
 		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화
+		SetDebugIdx(pRow, (int)(&item - fallLockList.data())); // [DEBUG-IDX] _FallLck_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 	//==========================================
@@ -285,6 +291,7 @@ void DeviceGridInfo::LoadAllData()
 		strResult.AppendFormat(_T("운용 : %s"), (LPCTSTR)GetSafeString(item.Unit_Act.Name));
 		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
 		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화
+		SetDebugIdx(pRow, (int)(&item - deadSecList.data())); // [DEBUG-IDX] _DeadSec_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 	//==========================================
@@ -301,6 +308,7 @@ void DeviceGridInfo::LoadAllData()
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
 		CString strResult = _T("");
 		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
+		SetDebugIdx(pRow, (int)(&item - faultList.data())); // [DEBUG-IDX] _Fault_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 	//==========================================
@@ -341,6 +349,7 @@ void DeviceGridInfo::LoadAllData()
 		if (!soSignals.IsEmpty()) strResult.AppendFormat(_T("관련 신호기 : %s"), (LPCTSTR)soSignals);
 		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
 		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화
+		SetDebugIdx(pRow, (int)(&item - slowOrderList.data())); // [DEBUG-IDX] _SO_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 	//==========================================
@@ -355,6 +364,7 @@ void DeviceGridInfo::LoadAllData()
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
 		pRow->GetItem(0)->SetValue(_T("끌림 감시장치"));
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
+		SetDebugIdx(pRow, (int)(&item - attractionList.data())); // [DEBUG-IDX] _Attract_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 }
