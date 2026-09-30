@@ -241,8 +241,8 @@ CString CommonUtil::GetBitNoName(Byte_t kind, UINT tableIdx, Byte_t bitNo)
 	case 'H': // 열차진입방지(CPT)
 	case 'G': // 끌림감시장치
 	case 'Y': // 임시속도
-	case 'K': // 출발반응등
-	case 'W': // 소속역 (문서 3.9 제목의 "(W)" 대응)
+	case 'K': // 출발반응등(STL) - EI_IP_IOCard_Typedef.h INP_STL_INFO / Logic_define.h LOGIC_BITNO_STL_IN(0)
+	          // (BitNo 정의서 3.9 제목의 "(W)" 는 오기. 'W' 는 소속역(_DWL_Info) 이며 BitNo 정의 없음)
 	case 'F': // 기타고장
 		return Find({ {0, _T("인덱스 구분")} });
 
@@ -263,7 +263,7 @@ CString CommonUtil::GetBitNoName(Byte_t kind, UINT tableIdx, Byte_t bitNo)
 			{78, _T("GDU")}, {79, _T("EMZ")}, {80, _T("EMS")} });
 	}
 
-	default: // 궤도(T/t), VRD(V), 연동장치(E), 출력(O), 진로선별등(U) : 문서에 BitNo 정의 없음
+	default: // 궤도(T/t), VRD(V), 연동장치(E), 출력(O), 진로선별등(U), 소속역(W) : 문서에 BitNo 정의 없음
 		return _T("");
 	}
 }
