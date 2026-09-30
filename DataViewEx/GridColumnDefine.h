@@ -131,14 +131,16 @@ public:
 	static std::vector<ColumnInfo> GetINCardColumnInfo() {
 		return {
 			{_T("Rack No"), 20}, {_T("Slot No"), 20}, {_T("Card No"), 20}, {_T("Port No"), 20},
-			{_T("이름"), 70}, {_T("비트이름"), 70}, {_T("종류"), 100}, {_T("Table Index"), 55 }, {_T("BitNo"), 55},
+			{_T("이름"), 70}, {_T("비트이름"), 70}, {_T("종류"), 100}, {_T("Table Index"), 55 }, {_T("테이블 구분"), 90},
+			{_T("BitNo"), 40}, {_T("비트 구분"), 90},
 			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 	}
 	static std::vector<ColumnInfo> GetOUTCardColumnInfo() {
 		return {
 			 {_T("Rack No"), 20}, {_T("Slot No"), 20}, {_T("Card No"), 20}, {_T("Port No"), 20},
-			{_T("이름"), 70}, {_T("비트이름"), 70}, {_T("종류"), 50}, {_T("Table Index"), 55}, {_T("BitNo"), 55}, {_T("출력 구분"), 100},
+			{_T("이름"), 70}, {_T("비트이름"), 70}, {_T("종류"), 50}, {_T("Table Index"), 55}, {_T("테이블 구분"), 90},
+			{_T("BitNo"), 40}, {_T("비트 구분"), 90}, {_T("출력 구분"), 100},
 			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
 		};
 		//	return {
@@ -170,6 +172,7 @@ public:
 	static std::vector<ColumnInfo> GetLogicVariableColumnInfo() {
 		return {
 			{_T("로직IDX"), 35},{_T("명칭"), 100},{_T("연동구분"), 55},{_T("연동IDX"), 35},
+			{_T("테이블 구분"), 90},{_T("BitNo"), 35},{_T("비트 구분"), 90},
 			{_T("Card Type"), 45},{_T("Rack No"), 35},{_T("Slot No"), 35},{_T("Port No"), 35},{_T("로직구분"), 55},
 			{_T("로직Type"), 45},{_T("Timer"), 70},{_T("Time"), 35},{_T("DB_Time"), 35},
 			{_T("IDX"), 35} /* [DEBUG-IDX] 배열 인덱스 확인용 - 디버깅 후 제거 */
