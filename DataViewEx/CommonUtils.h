@@ -277,6 +277,8 @@ namespace CommonUtil
 			return _T("히터");
 		case INP_EIS_INFO:
 			return _T("연동장치");
+		case _T('O'): // [추가] Table BitNo 정의서(Rev 1.0) Kind 표 : 'O' = 출력 (IO카드 출력포트) - IOCard 헤더에 INP_ 정의 없음
+			return _T("출력");
 		default:
 			return _T("");
 		}
