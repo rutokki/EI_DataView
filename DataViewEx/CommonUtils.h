@@ -475,6 +475,13 @@ namespace CommonUtil
 		str.Format(_T("%d-%d"), nCardIdx, nPortIdx);
 		SetDebugIdx(pRow, str);
 	}
+	// [추가] "IP 전자연동 Table BitNo 정의 Rev 1.0" 문서 기준
+	//  - GetTableNameByKind : Kind + TableIdx 가 가리키는 DB 테이블 구분과 설비 이름 (예: "신호기 : 21")
+	//  - GetBitNoName       : Kind + TableIdx + BitNo 의 의미 (예: 신호기 BitNo 4 -> "HR")
+	//    폐색(B)은 폐색 종류(BlkKind), 신호기(S)/LMR(L)은 폐색/중계 신호기 여부를 DB 에서 조회해 판별
+	//    문서에 정의가 없는 Kind 는 "", 정의된 Kind 인데 번호가 없으면 "미정의(n)"
+	CString GetTableNameByKind(Byte_t kind, UINT tableIdx);
+	CString GetBitNoName(Byte_t kind, UINT tableIdx, Byte_t bitNo);
 	CString GetOriginNameByNumber(Byte_t nNum, GetDBNameByNum num);
 	CString GetDiffNameByNumber(Byte_t nNum, GetDBNameByNum num);
 }

@@ -53,26 +53,30 @@ void LogicVariableGridInfo::LoadAllLogicData()
 		pRow->GetItem(2)->SetValue((LPCTSTR)(GetKindName(item->Kind)));
 		//연동 Idx 연동DB의 인덱스 TableIdx
 		pRow->GetItem(3)->SetValue(item->TableIdx);
+		// [추가] 테이블 구분 / BitNo / 비트 구분 (Table BitNo 정의서) - 이후 칼럼은 3칸씩 밀림
+		pRow->GetItem(4)->SetValue((LPCTSTR)GetTableNameByKind(item->Kind, item->TableIdx));
+		pRow->GetItem(5)->SetValue(item->BitNo);
+		pRow->GetItem(6)->SetValue((LPCTSTR)GetBitNoName(item->Kind, item->TableIdx, item->BitNo));
 		//Card 타입	 CARDINFO.CardType
 
-		pRow->GetItem(4)->SetValue((LPCTSTR)GetCardType(item->CARDINFO.CardType));
+		pRow->GetItem(7)->SetValue((LPCTSTR)GetCardType(item->CARDINFO.CardType));
 		//Rack No nRackNo
-		pRow->GetItem(5)->SetValue(item->CARDINFO.nRackNo);
-		pRow->GetItem(6)->SetValue(item->CARDINFO.nSlotNo);
-		pRow->GetItem(7)->SetValue(item->CARDINFO.nPortNo);
+		pRow->GetItem(8)->SetValue(item->CARDINFO.nRackNo);
+		pRow->GetItem(9)->SetValue(item->CARDINFO.nSlotNo);
+		pRow->GetItem(10)->SetValue(item->CARDINFO.nPortNo);
 		//Slot No nSlotNo
 
 		//Port No nPortNo
 		//로직 구분 LogicKind
-		pRow->GetItem(8)->SetValue((LPCTSTR)GetKindName(item->LogicKind));
+		pRow->GetItem(11)->SetValue((LPCTSTR)GetKindName(item->LogicKind));
 		//로직 종류 LogicType 
-		pRow->GetItem(9)->SetValue(item->LogicType);
+		pRow->GetItem(12)->SetValue(item->LogicType);
 		//Timer TimerKind
-		pRow->GetItem(10)->SetValue((LPCTSTR)GetKindLogicTime(item->TimerKind));
+		pRow->GetItem(13)->SetValue((LPCTSTR)GetKindLogicTime(item->TimerKind));
 		//Time(ms) TimeValue
-		pRow->GetItem(11)->SetValue(item->TimeValue);
+		pRow->GetItem(14)->SetValue(item->TimeValue);
 		//DB_Time TimeValueDB
-		pRow->GetItem(12)->SetValue(item->TimeValueDB);
+		pRow->GetItem(15)->SetValue(item->TimeValueDB);
 		SetDebugIdx(pRow, (int)nVecIdx); // [DEBUG-IDX] LogicVariable.Dat 레코드 순서(0부터)
 		AddRow(pRow, FALSE);
 	}

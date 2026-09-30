@@ -101,7 +101,9 @@ void OUTCardGridInfo::LoadAllOutCardData()
 			if (bHasData)
 			{
 				pRow->GetItem(7)->SetValue(tableIdx); //인덱스
-				pRow->GetItem(8)->SetValue(portItem.BitNo); //비트번호
+				pRow->GetItem(8)->SetValue((LPCTSTR)GetTableNameByKind(portItem.Kind, portItem.Idx));           // [추가] 테이블 구분
+				pRow->GetItem(9)->SetValue(portItem.BitNo); //비트번호
+				pRow->GetItem(10)->SetValue((LPCTSTR)GetBitNoName(portItem.Kind, portItem.Idx, portItem.BitNo)); // [추가] 비트 구분 (Table BitNo 정의서)
 			}
 			CString strOutKind = GetOUTKInd(portItem.Kind, portItem.PORTOUT.OutKind);
 			CString strOutGubun = GetOutGubun(portItem.PORTOUT.OutKind, portItem.PORTOUT.OutGubun); // 설비 KInd 별 출력 
@@ -109,7 +111,7 @@ void OUTCardGridInfo::LoadAllOutCardData()
 			//        문자열을 서식(AppendFormat) 인자로 넘기지 않도록 변경
 			if (!strOutKind.IsEmpty() && !strOutGubun.IsEmpty())
 				strOutKind += _T(" : ") + strOutGubun;
-			pRow->GetItem(9)->SetValue((LPCTSTR)strOutKind);
+			pRow->GetItem(11)->SetValue((LPCTSTR)strOutKind); // 출력 구분 ([수정] 테이블/비트 구분 칼럼 추가로 9 -> 11)
 			SetDebugIdx(pRow, (int)(&cardItem - outCardInfo.data()), (int)nPort); // [DEBUG-IDX] OUTCARDLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);
