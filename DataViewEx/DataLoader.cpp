@@ -38,7 +38,7 @@ bool DataLoader::LoadDatabase(const CString& filePath, bool IsOriginal)
 		}
 		else
 		{
-			TRACE0("Database file size mismatch.\n");
+			TRACE2("Database file size mismatch. Expected: %u, File: %I64u\n", (UINT)sizeof(DBstruct), file.GetLength());
 			file.Close();
 		}
 	}
