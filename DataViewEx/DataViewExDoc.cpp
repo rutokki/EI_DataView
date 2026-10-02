@@ -130,6 +130,7 @@ BOOL CDataViewExDoc::ReadMainBinData(CString filePath)
 	if (file.Open(filePath, CFile::modeRead | CFile::typeBinary, &ex))
 	{
 		std::unique_ptr<DBstruct> TSCDBStruct(new DBstruct());
+		ULONGLONG nFileSize = file.GetLength();
 
 		// 파일 읽기 (성공적으로 읽었는지 확인)
 		if (file.Read(TSCDBStruct.get(), sizeof(DBstruct)) == sizeof(DBstruct))
@@ -140,7 +141,13 @@ BOOL CDataViewExDoc::ReadMainBinData(CString filePath)
 		}
 		else
 		{
-			BCGPMessageBox(_T("bin 데이터 파일의 크기나 형식이 맞지 않습니다."));
+			// [수정] DBstruct 구조체가 바뀌면(예: MAX_STL 5 -> 8) 이전 구조체로 만든 bin 파일은 크기가 달라 읽을 수 없음.
+			//        원인을 바로 알 수 있도록 파일 크기와 현재 구조체 크기를 함께 표시
+			CString strMsg;
+			strMsg.Format(_T("bin 데이터 파일의 크기나 형식이 맞지 않습니다.\n(파일 크기: %I64u bytes, 기대 크기(DBstruct): %u bytes)\n\n")
+				_T("DBStruct 구조체 버전과 다른 버전으로 생성된 파일인지 확인하세요."),
+				nFileSize, (UINT)sizeof(DBstruct));
+			BCGPMessageBox(strMsg);
 			file.Close();
 		}
 	}
