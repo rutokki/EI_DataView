@@ -34,12 +34,7 @@ typedef unsigned short Word_t;
 
 /////////////////////////////////////////////////////////////////////////////
 //===========================================================================
-// Card Type (IOA_INFO)
-#define CARD_DB_TYPE_INPUT           1               // 입력
-#define CARD_DB_TYPE_OUTPUT          2               // 출력
-#define CARD_DB_TYPE_SIGNAL4         3               // 4등용 신호기(주신호기)
-#define CARD_DB_TYPE_SIGNAL2         4               // 2등용 신호기(입환 표지, 신호기)
-#define CARD_DB_TYPE_SWITCH          5               // 선로전환기
+
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -82,7 +77,7 @@ typedef unsigned short Word_t;
 #define MAX_DEAD_SECTION             90              // 절연구간 (운용, 1계, 2계)
 #define MAX_FALL_LOCK                60              // 지장물 (낙석, 보호)
 
-#define MAX_STL                      5               // 출발반응등 최대 수
+#define MAX_STL                      8               // 출발반응등 최대 수
 #define MAX_ATTRACT                  30              // 끌림 감시장치 최대 수
 #define MAX_ETC_FAULT                20              // 기타 고장정보 최대 수
 
@@ -168,7 +163,7 @@ typedef struct DATA_PACKED_START  _StationInfoType_t
         Byte_t  TrkOption;    // bit0=0 : 비상해정시 착점궤도가 점유상태에서 착점궤도는 진로내의 모든궤도 해정시 자동해정(default)
                               // bit0=1 : 착점궤도 등 모든궤도에 대해 비상해정 취급 후 해정
                               //          각 궤도에 대해 보호구역 설정 및 화면에 보호구역 상태표시
-                              // bit1=1 : 각각의 궤도에 대한 보호설정 및 해정
+                              // bit1=1 : 궤도에 대한 보호설정 및 해정
                               //          화면에 '보호설정' 상태 표시에 대한 버튼 추가
                               //          각 궤도에 대해 보호설정 및 화면에 보호설정(버튼) 상태표시
 
