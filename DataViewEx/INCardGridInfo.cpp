@@ -115,7 +115,9 @@ void INCardGridInfo::LoadAllInCardData()
 			if (bHasData)
 			{
 				pRow->GetItem(7)->SetValue(portItem.Idx);                   // Table Index
-				pRow->GetItem(8)->SetValue(portItem.BitNo);                 // BitNo
+				pRow->GetItem(8)->SetValue((LPCTSTR)GetTableNameByKind(portItem.Kind, portItem.Idx));          // [추가] 테이블 구분
+				pRow->GetItem(9)->SetValue(portItem.BitNo);                 // BitNo
+				pRow->GetItem(10)->SetValue((LPCTSTR)GetBitNoName(portItem.Kind, portItem.Idx, portItem.BitNo)); // [추가] 비트 구분 (Table BitNo 정의서)
 			}
 			SetDebugIdx(pRow, (int)(&cardItem - inCardInfo.data()), (int)nPort); // [DEBUG-IDX] INCARDLIST[카드].CardData[포트]
 
