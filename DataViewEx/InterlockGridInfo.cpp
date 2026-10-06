@@ -81,44 +81,53 @@ CString InterlockGridInfo::GetSwitchLockStr(const InterLockInfoType& item)
 {
 	if (item.Count.NoOfSwhLock == 0) return _T("");
 	CString str = _T("쇄정 선로전환기 : "), temp;
-	for (int i = 0; i < item.Count.NoOfSwhLock; i++)
+	for (int i = 0; i < item.Count.NoOfSwhLock && i < NO_OF_LOCK_SWH; i++)
 	{
-		if (item.SwitchLock[i].SwitchNo == 0) continue;
+		const auto& swLock = item.SwitchLock[i];
+		if (swLock.SwitchNo == 0) continue;
 		// 선로전환기 번호를 이름으로 변환
-		CString strSwitchName = CommonUtil::GetDBNameByNumber(static_cast<Byte_t>(item.SwitchLock[i].SwitchNo), GetDBNameByNum::SwitchIdx);
-		temp.Format(_T("%s[%d]"), (LPCTSTR)strSwitchName, item.SwitchLock[i].Direction);
+		CString strSwitchName = CommonUtil::GetDBNameByNumber(static_cast<Byte_t>(swLock.SwitchNo), GetDBNameByNum::SwitchIdx);
+
+		// [수정] 쇄정 방향(Direction)을 숫자 대신 정위/반위로 표시 (1:정위, 2:반위)
+		CString strDir;
+		switch (swLock.Direction)
+		{
+		case InterLockingInfo::SwitchLock::Direction::NORMAL:  strDir = _T("정위"); break;
+		case InterLockingInfo::SwitchLock::Direction::REVERSE: strDir = _T("반위"); break;
+		default: strDir.Format(_T("방향 미정의(%d)"), swLock.Direction); break;
+		}
+		temp.Format(_T("%s[%s]"), (LPCTSTR)strSwitchName, (LPCTSTR)strDir);
 		str += temp;
-		Byte_t lk = item.SwitchLock[i].LockKind;
-		if (lk > 0) {
+
+		// [수정] 쇄정 종류(LockKind) - 항목을 ", " 로 구분하고 괄호를 닫음 (기존에는 ")" 누락, 항목이 붙어서 표시됨)
+		//        bit2(진로설정시 일정시간 쇄정)도 TimeValue(초) 를 함께 표시
+		Byte_t lk = swLock.LockKind;
+		CStringArray arrKind;
+		if (lk & 0x01) arrKind.Add(_T("진로쇄정"));
+		if (lk & 0x02) arrKind.Add(_T("Overlap쇄정"));
+		if (lk & 0x04) { temp.Format(_T("진로설정시 %d초 동안 쇄정"), swLock.TimeValue); arrKind.Add(temp); }
+		if (lk & 0x08) { temp.Format(_T("착점도착 %d초 후 해정(착점궤도 복구시 해정)"), swLock.TimeValue); arrKind.Add(temp); }
+		if (lk & 0x10) { temp.Format(_T("착점도착 %d초 후 해정(착점궤도 복구시에도 쇄정 유지)"), swLock.TimeValue); arrKind.Add(temp); }
+		// 해정 궤도(ReleaseTrkNo) : LockKind bit0 또는 bit1 일 때 사용
+		if ((lk & 0x03) && swLock.ReleaseTrkNo > 0)
+		{
+			CString strReleaseTrk = CommonUtil::GetDBNameByNumber(static_cast<Byte_t>(swLock.ReleaseTrkNo), GetDBNameByNum::TrackIdx);
+			temp.Format(_T("해정궤도:%s"), (LPCTSTR)strReleaseTrk);
+			arrKind.Add(temp);
+		}
+		if (arrKind.GetSize() > 0)
+		{
 			str += _T("(");
-			if (lk & 0x01) str += _T("진로");
-			if (lk & 0x02) str += _T(" Overlap");
-			if (lk & 0x04) str += _T(" 설정시쇄정");
-			if (lk & 0x08) {
-				// [추가] TimeValue: 시간후해정의 실제 시간값(초) 표시
-				CString strTime;
-				strTime.Format(_T("착점도착 후  %d초 후 해정, 착점궤도 복구시 해정"), item.SwitchLock[i].TimeValue);
-				str += strTime;
+			for (INT_PTR k = 0; k < arrKind.GetSize(); k++)
+			{
+				if (k > 0) str += _T(", ");
+				str += arrKind[k];
 			}
-			if (lk & 0x10) {
-				// [추가] TimeValue: 시간후해정의 실제 시간값(초) 표시
-				CString strTime;
-				strTime.Format(_T("착점도착 후  %d초 후 해정, 착점궤도 복구시에도 쇄정 유지"), item.SwitchLock[i].TimeValue);
-				str += strTime;
-			}
-			if (lk & 0x01 || lk & 0x02) {
-				if (item.SwitchLock[i].ReleaseTrkNo > 0) {
-					// 해정 궤도 번호도 궤도 이름으로 변환
-					CString strReleaseTrk = CommonUtil::GetDBNameByNumber(static_cast<Byte_t>(item.SwitchLock[i].ReleaseTrkNo), GetDBNameByNum::TrackIdx);
-					temp.Format(_T(" 선로전환기 해정 궤도 :%s"), (LPCTSTR)strReleaseTrk);
-					str += temp;
-				}
-			}
+			str += _T(")");
 		}
-		else {
-			str += _T(" ");
-		}
+		str += _T("  ");
 	}
+	str.TrimRight();
 	return str + _T("\r\n");
 }
 //  진로쇄정 궤도 정보 (TrackIdx 활용)
