@@ -59,25 +59,54 @@ CString DeviceGridInfo::GetBlockKindFromByte(Byte_t byte)
 // EI_IP_DBStruct_Typedef.h의 BlockAspect 필드 원본 주석("현시 수에 따른 폐색 입력") 표를
 // 그대로 반영한 것. 구조체에 현시별 입력 이름이 정의되지 않은 폐색 종류(복선연동/단선연동/
 // 통표/지하철/대야/삼각선/청량리/양방향(11)/고속선/14 등)는 "n현시"만 표시.
-CString DeviceGridInfo::GetBlcokAspectFromByte(Byte_t blkKind, Byte_t aspectCount)
+// [추가] EI_IP_DBStruct_Typedef.h BlkKind 주석의 default 현시 수
+//   1 : 복선자동 : 5현시 default
+//   2 : 단선자동 : 3현시 default
+//   8 : 의왕 폐색 : 5현시 default
+//  12 : 양방향 폐색 (정방향장내 && 역방향출발) : 3현시 default
+// BlockAspect 가 설정(0 이 아님)되어 있으면 그 값을 그대로 사용한다.
+Byte_t DeviceGridInfo::GetEffectiveBlockAspect(Byte_t blkKind, Byte_t aspectCount, bool* pIsDefault)
 {
+	if (pIsDefault) *pIsDefault = false;
+	if (aspectCount != 0) return aspectCount;
+
+	Byte_t nDefault = 0;
+	switch (static_cast<BlockKind>(blkKind))
+	{
+	case BlockKind::DoubleAuto_5Aspect: nDefault = 5; break;
+	case BlockKind::SingleAuto_3Aspect: nDefault = 3; break;
+	case BlockKind::UiwangBlock:        nDefault = 5; break;
+	case BlockKind::BiDirectionalRev:   nDefault = 3; break;
+	default:                            break;
+	}
+	if (pIsDefault && nDefault != 0) *pIsDefault = true;
+	return nDefault;
+}
+
+CString DeviceGridInfo::GetBlcokAspectFromByte(Byte_t blkKind, Byte_t aspectCountRaw)
+{
+	// [수정] BlockAspect 미설정(0)이면 구조체 헤더의 default 현시 수로 표시 (기존에는 "잘못된 현시 데이터")
+	bool bIsDefault = false;
+	Byte_t aspectCount = GetEffectiveBlockAspect(blkKind, aspectCountRaw, &bIsDefault);
+	CString strDefault = bIsDefault ? _T(" (default)") : _T("");
+
 	switch (static_cast<BlockKind>(blkKind))
 	{
 	case BlockKind::DoubleAuto_5Aspect: // 복선자동
-		if (aspectCount == 3) return _T("복선자동 3현시 (Y)");
-		if (aspectCount == 5) return _T("복선자동 5현시 (YY, Y, YG)");
+		if (aspectCount == 3) return _T("복선자동 3현시 (Y)") + strDefault;
+		if (aspectCount == 5) return _T("복선자동 5현시 (YY, Y, YG)") + strDefault;
 		break;
 	case BlockKind::SingleAuto_3Aspect: // 단선자동
-		if (aspectCount == 3) return _T("단선자동 3현시 (BR, DR)");
-		if (aspectCount == 5) return _T("단선자동 5현시 (BR, YY, Y, YG)"); // DR 없음
+		if (aspectCount == 3) return _T("단선자동 3현시 (BR, DR)") + strDefault;
+		if (aspectCount == 5) return _T("단선자동 5현시 (BR, YY, Y, YG)") + strDefault; // DR 없음
 		break;
 	case BlockKind::UiwangBlock: // 의왕 폐색
-		if (aspectCount == 3) return _T("의왕 폐색 3현시 (HR, BHR, TR, TPSR, eHR)");
-		if (aspectCount == 4 || aspectCount == 5) return _T("의왕 폐색 4,5현시 (HR, BHR, TR, TPSR)");
+		if (aspectCount == 3) return _T("의왕 폐색 3현시 (HR, BHR, TR, TPSR, eHR)") + strDefault;
+		if (aspectCount == 4 || aspectCount == 5) return _T("의왕 폐색 4,5현시 (HR, BHR, TR, TPSR)") + strDefault;
 		break;
 	case BlockKind::BiDirectionalRev: // 양방향 폐색 (정방향장내 && 역방향출발)
-		if (aspectCount == 3) return _T("양방향 폐색 3현시 (BR, DR)");
-		if (aspectCount == 5) return _T("양방향 폐색 5현시 (BR)"); // DR 없음
+		if (aspectCount == 3) return _T("양방향 폐색 3현시 (BR, DR)") + strDefault;
+		if (aspectCount == 5) return _T("양방향 폐색 5현시 (BR)") + strDefault; // DR 없음
 		break;
 	default:
 		break;
@@ -90,6 +119,8 @@ CString DeviceGridInfo::GetBlcokAspectFromByte(Byte_t blkKind, Byte_t aspectCoun
 		str.Format(_T("%d현시"), aspectCount);
 		return str;
 	}
+	// [수정] 현시 수 개념이 없는 폐색(연동/통표/지하철 등)은 BlockAspect 미설정(0)이 정상이므로 오류로 표시하지 않음
+	if (aspectCount == 0) return _T("-");
 	return _T("잘못된 현시 데이터");
 }
 int DeviceGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -471,8 +502,10 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 		strFlags += _T("[역방향출발적색] 역방향 출발 폐색 적색 표시(점멸없음) BLTR 낙하, BR 낙하일 때 출발폐색 적색점등, ");
 	// 5. 출발신호 현시 조건 옵션 (Bit0, Bit1 구분)
 	// [수정] BlockAspect(다른 값 체계의 잘못된 enum)와 비교하던 부분을 제거.
-	// 원본 구조체 주석상 KindInfo.OutKind는 "단선자동 3현시"에 대해서만 정의되어 있어 BlkKind만으로 판단.
-	if (pData->BlkKind == static_cast<Byte_t>(BlockKind::SingleAuto_3Aspect))
+	// 원본 구조체 주석상 KindInfo.OutKind는 "단선자동 3현시"에 대해서만 정의되어 있음.
+	// [수정] 단선자동이어도 5현시이면 해당 없음 -> 현시 수(미설정이면 default 3현시)까지 확인
+	if (pData->BlkKind == static_cast<Byte_t>(BlockKind::SingleAuto_3Aspect) &&
+		GetEffectiveBlockAspect(pData->BlkKind, pData->BlockAspect) == 3)
 	{
 		// Bit0=1 : 출발신호 진행
 		if (pData->KindInfo.OutKind & 0x01)

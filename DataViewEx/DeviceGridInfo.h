@@ -43,6 +43,9 @@ public:
 	// 있으므로, blkKind를 함께 받도록 시그니처 변경. (기존엔 BlockAspect 값을 엉뚱한 enum으로
 	// 캐스팅해서 거의 모든 경우에 잘못된 텍스트를 보여주고 있었음)
 	CString GetBlcokAspectFromByte(Byte_t blkKind, Byte_t aspectCount);
+	// [추가] BlockAspect 가 0(미설정)이면 구조체 헤더의 BlkKind 별 default 현시 수를 반환
+	//        (복선자동 5, 단선자동 3, 의왕 5, 양방향(정방향장내 && 역방향출발) 3, 그 외 0)
+	static Byte_t GetEffectiveBlockAspect(Byte_t blkKind, Byte_t aspectCount, bool* pIsDefault = nullptr);
 	//virtual void AddSignalRow();
 	//BOOL FillSubitemsByCountry(CBCGPGridRow* pParent, LPCTSTR lpzsCountry);
 	virtual int GetExtraHierarchyOffset() const
