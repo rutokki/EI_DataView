@@ -474,12 +474,8 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 	// ==========================================
 	// 3. 비트 플래그 (옵션) 해석
 	// ==========================================
-<<<<<<< HEAD
-	CString strFlags = _T("[동작 옵션] \r\n");
-=======
 	// [수정] 실제로 설정된(비트가 켜진) 옵션만 표시. 기본값(비트 0)만 있으면 [동작 옵션] 항목 자체를 표시하지 않음
 	CString strFlags;
->>>>>>> origin/main
 	// [수정] RevKind의 Bit0(서울교통공사 3,4호선 역방향 폐색 여부)과 Bit1(전라선/경부선 구분)은
 	// 같은 바이트 안에 있지만 서로 독립된 별개의 플래그임(원본 구조체 주석 기준) - 하나의 코드값처럼
 	// else if로 묶여있던 것을 분리. 또한 "& 0x00"은 항상 0이라 절대 참이 될 수 없는 죽은 코드였고
@@ -552,16 +548,8 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 				"역방향장내 폐색 Y 또는 R 상태에서만 장내신호 취급 및 현시 가능 ");
 	// 뒤처리 : 설정된 옵션이 있을 때만 [동작 옵션] 표시
 	strFlags.TrimRight(_T(", "));
-<<<<<<< HEAD
-	if (strFlags != _T("[동작 옵션] ")) {
-		strTotal += strFlags + _T("\r\n");
-	}
-
-
-=======
 	if (!strFlags.IsEmpty())
-		strTotal += _T("[동작 옵션] ") + strFlags + _T("\r\n");
->>>>>>> origin/main
+		strTotal += _T("[동작 옵션]\r\n") + strFlags + _T("\r\n"); // 헤더는 별도 줄
 
 	// [수정] 출력 포트 : 동작 구분(Gubun)과 실제 출력 포트 위치(OutPort)가 모두 설정된 조건만 표시.
 	//        표시할 포트가 없으면 [출력 포트] 항목 자체를 표시하지 않음
@@ -585,16 +573,9 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 		if (!strPorts.IsEmpty()) strPorts += _T(" / ");
 		strPorts.AppendFormat(_T("%s: %s"), (LPCTSTR)strLabel, (LPCTSTR)FormatIOPosition(cond.OutPort));
 	}
-<<<<<<< HEAD
-	if (strPorts != _T("[출력 포트]"))
-	{
-		strTotal += strPorts;
-	}
-=======
 	if (!strPorts.IsEmpty())
 		strTotal += _T("[출력 포트]\r\n") + strPorts;
 	strTotal.TrimRight(_T("\r\n"));
->>>>>>> origin/main
 	return strTotal;
 }
 CString DeviceGridInfo::FormatByteArray(const Byte_t* pArr, int nSize)
