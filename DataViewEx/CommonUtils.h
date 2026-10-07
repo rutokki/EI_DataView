@@ -457,6 +457,7 @@ namespace CommonUtil
 	}
 	// [DEBUG-IDX] 디버깅용 : 각 그리드 마지막 칼럼(IDX)에 해당 설비의 배열 인덱스를 표시. 확인 후 제거 예정
 	//             (제거 시 "[DEBUG-IDX]" 로 검색하여 GridColumnDefine.h 의 칼럼 정의와 호출부를 함께 삭제)
+	//             -> 현재 GridColumnDefine.h 의 IDX 칼럼 정의와 SetDebugIdx 호출부는 주석 처리됨 (다시 쓰려면 주석 해제)
 	inline void SetDebugIdx(CBCGPGridRow* pRow, const CString& strIdx)
 	{
 		if (pRow == nullptr || pRow->GetItemCount() <= 0) return;

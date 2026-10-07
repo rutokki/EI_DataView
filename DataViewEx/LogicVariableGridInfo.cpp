@@ -77,7 +77,7 @@ void LogicVariableGridInfo::LoadAllLogicData()
 		pRow->GetItem(14)->SetValue(item->TimeValue);
 		//DB_Time TimeValueDB
 		pRow->GetItem(15)->SetValue(item->TimeValueDB);
-		SetDebugIdx(pRow, (int)nVecIdx); // [DEBUG-IDX] LogicVariable.Dat 레코드 순서(0부터)
+		//SetDebugIdx(pRow, (int)nVecIdx); // [DEBUG-IDX] LogicVariable.Dat 레코드 순서(0부터)
 		AddRow(pRow, FALSE);
 	}
 }

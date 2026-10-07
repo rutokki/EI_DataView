@@ -120,7 +120,7 @@ void SwitchGridInfo::LoadAllSwitchData()
 		pRow->GetItem(14)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[1], GetDBNameByNum::TrackIdx)); // B점
 		pRow->GetItem(15)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[2], GetDBNameByNum::TrackIdx)); // C점
 		pRow->GetItem(16)->SetValue((LPCTSTR)GetDBNameByNumber(item.SwhTrack[3], GetDBNameByNum::TrackIdx)); // D점
-		SetDebugIdx(pRow, (int)nIdx); // [DEBUG-IDX] _SWH_Info 배열 인덱스
+		//SetDebugIdx(pRow, (int)nIdx); // [DEBUG-IDX] _SWH_Info 배열 인덱스
 
 		// [정리] 로컬 출력(OUT WLR/PDO WR-N/PDO WR-R, Kind.LocalOut) 관련은 매핑 대상에서
 		// 제외하기로 확정함 (사용자 확인: 로컬 출력 제거). item.OutWLR 등은 애초에

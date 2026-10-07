@@ -157,7 +157,7 @@ void SwitchCardGridInfo::LoadAllSwitchCardData()
 			pRow->GetItem(8)->SetValue((LPCTSTR)strNoseKind);           // 노스 종류 (첨단/크로싱) - DB 기준 노스가동인 경우만 표시
 			if (bHasData)
 				pRow->GetItem(9)->SetValue(portItem.Idx);               // Table Index (숫자 그대로)
-			SetDebugIdx(pRow, (int)(&cardItem - SwitchCardInfo.data()), (int)nPort); // [DEBUG-IDX] SWITCHLIST[카드].CardData[포트]
+			//SetDebugIdx(pRow, (int)(&cardItem - SwitchCardInfo.data()), (int)nPort); // [DEBUG-IDX] SWITCHLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);
 		}

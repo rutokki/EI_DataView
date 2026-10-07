@@ -112,7 +112,7 @@ void OUTCardGridInfo::LoadAllOutCardData()
 			if (!strOutKind.IsEmpty() && !strOutGubun.IsEmpty())
 				strOutKind += _T(" : ") + strOutGubun;
 			pRow->GetItem(11)->SetValue((LPCTSTR)strOutKind); // 출력 구분 ([수정] 테이블/비트 구분 칼럼 추가로 9 -> 11)
-			SetDebugIdx(pRow, (int)(&cardItem - outCardInfo.data()), (int)nPort); // [DEBUG-IDX] OUTCARDLIST[카드].CardData[포트]
+			//SetDebugIdx(pRow, (int)(&cardItem - outCardInfo.data()), (int)nPort); // [DEBUG-IDX] OUTCARDLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);
 		}

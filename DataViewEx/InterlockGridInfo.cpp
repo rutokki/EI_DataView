@@ -975,7 +975,7 @@ void InterlockGridInfo::loadInterLockData()
 		CBCGPGridItem* pDataItem = pRow->GetItem(2);
 		pDataItem->SetValue((LPCTSTR)strData);
 		pDataItem->SetMultiline(TRUE);
-		SetDebugIdx(pRow, nIdx); // [DEBUG-IDX] _ILK_Info / _RTE_Info 배열 인덱스
+		//SetDebugIdx(pRow, nIdx); // [DEBUG-IDX] _ILK_Info / _RTE_Info 배열 인덱스
 		AddRow(pRow, FALSE);
 	}
 }

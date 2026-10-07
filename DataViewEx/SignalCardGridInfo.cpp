@@ -105,7 +105,7 @@ void SignalCardGridInfo::LoadAllSignalCardData()
 			pRow->GetItem(6)->SetValue((LPCTSTR)strTagName);            // 표찰이름
 			if (bHasData)
 				pRow->GetItem(7)->SetValue(portItem.Idx);               // Table Index (숫자 그대로, 문자열 캐스팅 금지)
-			SetDebugIdx(pRow, (int)(&cardItem - SignalCardInfo.data()), (int)nPort); // [DEBUG-IDX] SIGNALLIST[카드].CardData[포트]
+			//SetDebugIdx(pRow, (int)(&cardItem - SignalCardInfo.data()), (int)nPort); // [DEBUG-IDX] SIGNALLIST[카드].CardData[포트]
 
 			AddRow(pRow, FALSE);
 		}
