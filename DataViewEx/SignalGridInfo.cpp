@@ -61,7 +61,7 @@ void SignalGridInfo::LoadAllSignal()
 		if (item.Kind.SigDir & SignalInfo::SigDir)  strDir = _T("상행");
 		if (item.Kind.SigDir & SignalInfo::SigDir2) strDir += strDir.IsEmpty() ? _T("하행") : _T("/하행");
 		pRow->GetItem(21)->SetValue((LPCTSTR)strDir);
-		SetDebugIdx(pRow, (int)(&item - signalList.data())); // [DEBUG-IDX] _SIG_Info 배열 인덱스
+		//SetDebugIdx(pRow, (int)(&item - signalList.data())); // [DEBUG-IDX] _SIG_Info 배열 인덱스
 
 		AddRow(pRow, FALSE);
 	}
