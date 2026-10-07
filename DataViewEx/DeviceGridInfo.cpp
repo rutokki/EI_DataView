@@ -474,16 +474,22 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 	// ==========================================
 	// 3. 비트 플래그 (옵션) 해석
 	// ==========================================
+<<<<<<< HEAD
 	CString strFlags = _T("[동작 옵션] \r\n");
+=======
+	// [수정] 실제로 설정된(비트가 켜진) 옵션만 표시. 기본값(비트 0)만 있으면 [동작 옵션] 항목 자체를 표시하지 않음
+	CString strFlags;
+>>>>>>> origin/main
 	// [수정] RevKind의 Bit0(서울교통공사 3,4호선 역방향 폐색 여부)과 Bit1(전라선/경부선 구분)은
 	// 같은 바이트 안에 있지만 서로 독립된 별개의 플래그임(원본 구조체 주석 기준) - 하나의 코드값처럼
 	// else if로 묶여있던 것을 분리. 또한 "& 0x00"은 항상 0이라 절대 참이 될 수 없는 죽은 코드였고
 	// (경부선 케이스), 게다가 Bit1 자체는 "양방향 폐색인 경우(BlkKind=11/12/14)에만" 의미가 있음.
 	if (pData->KindInfo.RevKind & 0x01)
 		strFlags += _T("서울교통 3,4호선 역방향 폐색, ");
-	if (pData->BlkKind == 11 || pData->BlkKind == 12 || pData->BlkKind == 14)
+	// 양방향 폐색(11/12/14)에서 Bit1=1 : 전라선 양방향 폐색 (Bit1=0 경부선은 기본값이므로 표시하지 않음)
+	if ((pData->BlkKind == 11 || pData->BlkKind == 12 || pData->BlkKind == 14) && (pData->KindInfo.RevKind & 0x02))
 	{
-		strFlags += (pData->KindInfo.RevKind & 0x02) ? _T("전라선 양방향 폐색, ") : _T("경부선 양방향 폐색, ");
+		strFlags += _T("전라선 양방향 폐색, ");
 	}
 	// 역방향 출발 적색 옵션 (BlockDepRed.DepRedKind, Bit0/Bit1 구분)
 	// [수정] 이전 코드의 세 줄은 실제로는 DepRedKind가 아니라 BlockBOthInfo.RevStartRed의
@@ -491,8 +497,7 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 	//  1) DepRedKind 자신의 실제 의미로 텍스트를 고치고,
 	//  2) 지금까지 어디에도 표시되지 않던 RevStartRed를 올바른 필드에서 읽어 별도로 추가함.
 	//  3) "& 0x00"은 항상 0이라 절대 실행되지 않는 죽은 코드였던 것도 제거.
-	if (pData->BlockDepRed.DepRedKind == 0x00)
-		strFlags += _T("[출발적색] 출발진로의 착점궤도 낙하일 때 적색표시(default), ");
+	// (DepRedKind == 0x00 : 출발진로의 착점궤도 낙하일 때 적색표시 - 기본값이므로 표시하지 않음)
 	if (pData->BlockDepRed.DepRedKind & 0x01)
 		strFlags += _T("[출발적색] 궤도 상관없이 폐색 BLTR 낙하일 때 적색표시, ");
 	if (pData->BlockDepRed.DepRedKind & 0x02)
@@ -518,11 +523,7 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 		{
 			strFlags += _T("BR, DR 모두 여자시 출발신호 주의, ");
 		}
-		// Bit0=0 && Bit1=0 : 출발신호 최소 현시
-		if ((pData->KindInfo.OutKind & 0x01) == 0 && (pData->KindInfo.OutKind & 0x02) == 0)
-		{
-			strFlags += _T("BR, DR 모두 여자시 출발신호 최소 현시, ");
-		}
+		// (Bit0=0 && Bit1=0 : 출발신호 최소 현시 - 기본값이므로 표시하지 않음)
 	}
 	//  DepSig Bit0 검사 : 양방향 폐색(정방향출발 && 역방향장내) 관련
 	// [수정] 주석이 "Bit2=1"로 잘못 적혀 있었음 - 원본 구조체엔 DepSig에 Bit0만 정의돼 있고
@@ -549,20 +550,28 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 		if (pData->BlockBOthInfo.RevArrSig & 0x02) // Bit1 검사
 			strFlags += _T(
 				"역방향장내 폐색 Y 또는 R 상태에서만 장내신호 취급 및 현시 가능 ");
-	// 뒤처리 및 기본값 예외 처리
+	// 뒤처리 : 설정된 옵션이 있을 때만 [동작 옵션] 표시
 	strFlags.TrimRight(_T(", "));
+<<<<<<< HEAD
 	if (strFlags != _T("[동작 옵션] ")) {
 		strTotal += strFlags + _T("\r\n");
 	}
 
 
+=======
+	if (!strFlags.IsEmpty())
+		strTotal += _T("[동작 옵션] ") + strFlags + _T("\r\n");
+>>>>>>> origin/main
 
-	strTotal += _T("[출력 포트]\r\n");
+	// [수정] 출력 포트 : 동작 구분(Gubun)과 실제 출력 포트 위치(OutPort)가 모두 설정된 조건만 표시.
+	//        표시할 포트가 없으면 [출력 포트] 항목 자체를 표시하지 않음
 	CString strPorts;
 	for (int i = 0; i < MAX_BLOCK_COND; i++)
 	{
 		const auto& cond = pData->BlockCond[i];
 		if (cond.Gubun == 0) continue; // 미사용 조건은 건너뜀
+		const IO_Position& io = cond.OutPort;
+		if (io.Chassis == 0 && io.ModuleNo == 0 && io.CardNo == 0 && io.PortNo == 0) continue; // 출력 포트 미설정
 
 		CString strLabel;
 		switch (cond.Gubun)
@@ -576,10 +585,16 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 		if (!strPorts.IsEmpty()) strPorts += _T(" / ");
 		strPorts.AppendFormat(_T("%s: %s"), (LPCTSTR)strLabel, (LPCTSTR)FormatIOPosition(cond.OutPort));
 	}
+<<<<<<< HEAD
 	if (strPorts != _T("[출력 포트]"))
 	{
 		strTotal += strPorts;
 	}
+=======
+	if (!strPorts.IsEmpty())
+		strTotal += _T("[출력 포트]\r\n") + strPorts;
+	strTotal.TrimRight(_T("\r\n"));
+>>>>>>> origin/main
 	return strTotal;
 }
 CString DeviceGridInfo::FormatByteArray(const Byte_t* pArr, int nSize)
