@@ -474,7 +474,7 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 	// ==========================================
 	// 3. 비트 플래그 (옵션) 해석
 	// ==========================================
-	CString strFlags = _T("[동작 옵션] ");
+	CString strFlags = _T("[동작 옵션] \r\n");
 	// [수정] RevKind의 Bit0(서울교통공사 3,4호선 역방향 폐색 여부)과 Bit1(전라선/경부선 구분)은
 	// 같은 바이트 안에 있지만 서로 독립된 별개의 플래그임(원본 구조체 주석 기준) - 하나의 코드값처럼
 	// else if로 묶여있던 것을 분리. 또한 "& 0x00"은 항상 0이라 절대 참이 될 수 없는 죽은 코드였고
@@ -551,9 +551,11 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 				"역방향장내 폐색 Y 또는 R 상태에서만 장내신호 취급 및 현시 가능 ");
 	// 뒤처리 및 기본값 예외 처리
 	strFlags.TrimRight(_T(", "));
-	if (strFlags == _T("[동작 옵션] "))
-		strFlags += _T("기본값");
-	strTotal += strFlags + _T("\r\n");
+	if (strFlags != _T("[동작 옵션] ")) {
+		strTotal += strFlags + _T("\r\n");
+	}
+
+
 
 	strTotal += _T("[출력 포트]\r\n");
 	CString strPorts;
@@ -574,8 +576,10 @@ CString DeviceGridInfo::GetBlockInfoString(BlockTagInfoType* pData)
 		if (!strPorts.IsEmpty()) strPorts += _T(" / ");
 		strPorts.AppendFormat(_T("%s: %s"), (LPCTSTR)strLabel, (LPCTSTR)FormatIOPosition(cond.OutPort));
 	}
-	strTemp = strPorts.IsEmpty() ? CString(_T("해당 폐색 종류에 정의된 포트 출력 없음")) : (CString)strPorts;
-	strTotal += strTemp;
+	if (strPorts != _T("[출력 포트]"))
+	{
+		strTotal += strPorts;
+	}
 	return strTotal;
 }
 CString DeviceGridInfo::FormatByteArray(const Byte_t* pArr, int nSize)
