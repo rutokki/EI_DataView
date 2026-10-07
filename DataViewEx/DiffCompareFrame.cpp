@@ -4138,14 +4138,37 @@ std::vector<CString> DiffCompareFrame::ConvertInterlockInfoText(const std::span<
 		// 7. 쇄정 선로전환기 정보
 		if (item.Count.NoOfSwhLock > 0) {
 			CString strSwhLock = _T("");
-			for (int i = 0; i < item.Count.NoOfSwhLock; i++) {
-				if (item.SwitchLock[i].SwitchNo == 0) continue;
-				CString strSwhName = GetDBName(static_cast<BYTE>(item.SwitchLock[i].SwitchNo), SwitchIdx);
+			for (int i = 0; i < item.Count.NoOfSwhLock && i < NO_OF_LOCK_SWH; i++) {
+				const auto& swLock = item.SwitchLock[i];
+				if (swLock.SwitchNo == 0) continue;
+				CString strSwhName = GetDBName(static_cast<BYTE>(swLock.SwitchNo), SwitchIdx);
+
+				// [수정] 쇄정 방향(Direction)을 숫자 대신 정위/반위로 표시 (1:정위, 2:반위) - 연동도표(InterlockGridInfo)와 동일 형식
+				CString strDir;
+				switch (swLock.Direction)
+				{
+				case InterLockingInfo::SwitchLock::Direction::NORMAL:  strDir = _T("정위"); break;
+				case InterLockingInfo::SwitchLock::Direction::REVERSE: strDir = _T("반위"); break;
+				default: strDir.Format(_T("방향 미정의(%d)"), swLock.Direction); break;
+				}
 				CString sub;
-				sub.Format(_T(" %s[%d]"), (LPCTSTR)strSwhName, item.SwitchLock[i].Direction);
-				// [추가] LockKind/TimeValue - 구조체엔 있으나 기존 코드에 없던 필드
-				if (IsBitSet(item.SwitchLock[i].LockKind, 0)) sub += _T("(진로쇄정)");
-				if (IsBitSet(item.SwitchLock[i].LockKind, 1)) sub += _T("(Overlap쇄정)");
+				sub.Format(_T(" %s[%s]"), (LPCTSTR)strSwhName, (LPCTSTR)strDir);
+
+				// [수정] 쇄정 종류(LockKind) 전체 비트 + TimeValue / 해정궤도 표시 (기존에는 bit0/bit1 만 표시)
+				Byte_t lk = swLock.LockKind;
+				CString strKind, strTmp;
+				auto AddKind = [&](const CString& str) { if (!strKind.IsEmpty()) strKind += _T(", "); strKind += str; };
+				if (lk & 0x01) AddKind(_T("진로쇄정"));
+				if (lk & 0x02) AddKind(_T("Overlap쇄정"));
+				if (lk & 0x04) { strTmp.Format(_T("진로설정시 %d초 동안 쇄정"), swLock.TimeValue); AddKind(strTmp); }
+				if (lk & 0x08) { strTmp.Format(_T("착점도착 %d초 후 해정(착점궤도 복구시 해정)"), swLock.TimeValue); AddKind(strTmp); }
+				if (lk & 0x10) { strTmp.Format(_T("착점도착 %d초 후 해정(착점궤도 복구시에도 쇄정 유지)"), swLock.TimeValue); AddKind(strTmp); }
+				if ((lk & 0x03) && swLock.ReleaseTrkNo > 0)
+				{
+					strTmp.Format(_T("해정궤도:%s"), (LPCTSTR)GetDBName(static_cast<BYTE>(swLock.ReleaseTrkNo), TrackIdx));
+					AddKind(strTmp);
+				}
+				if (!strKind.IsEmpty()) sub += _T("(") + strKind + _T(")");
 				strSwhLock += sub;
 			}
 			if (!strSwhLock.IsEmpty()) {
