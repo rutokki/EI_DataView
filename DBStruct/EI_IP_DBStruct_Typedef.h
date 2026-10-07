@@ -58,30 +58,30 @@ typedef unsigned short Word_t;
 
 #define MAX_HOME_BLOCK_ROUTE         20              // 구내폐색 진로 최대 수
 #define MAX_TOTRTE_SIG               4               // 일괄(총괄) 진로에 제어되는 신호기 최대 수
-#define MAX_INHIBIT_ROUTE            20              // 최대 대항진로 수
+#define MAX_INHIBIT_ROUTE            40              // 최대 대항진로 수 --------------- (20)
 
 #define MAX_INCSIG_TRACK             10              // 궤도에 포함된 신호기 최대 수
 #define MAX_SWITCH_LOCK_EQUIP        6               // 선로전환기에 대한 설비 최대 수
 
+#define MAX_BLOCK                    17              // 최대 폐색제어 수 --------------- (16)
 #define MAX_BLOCK_COND               5               // 폐색 동작에 대한 설비 조건 최대 수
 #define MAX_BLOCK_TRACK_ARR          10              // 폐색 관련 장내 궤도 최대 수
 #define MAX_BLOCK_TRACK_DEP          10              // 폐색 관련 출발 궤도 최대 수
 #define MAX_BLOCK_TRACK_DEPRED       10              // 출발폐색 적색으로 표시하는 궤도 최대 수
 #define MAX_BLOCK_OUT                15              // 폐색에 대한 출력조건의 설비 쵀대 수
 
-#define MAX_LEVEL_CROSS              64              // 건널목 수 (건널목 고장검지)
-#define MAX_LEVELCROSS_CTRL          64              // 제어 건널목 수
+#define MAX_LEVEL_CROSS              65              // 건널목 수 (건널목 고장검지) ------ (64)
+#define MAX_LEVELCROSS_CTRL          65              // 제어 건널목 수 ------------------- (64)
 
-#define MAX_CPT_INFO                 64              // CPT 수
+#define MAX_CPT_INFO                 65              // CPT 수 ------------------------- (64)
 #define MAX_CPT_EQUIP                20              // CPT 관련 설비 최대 수
-#define MAX_DEAD_SECTION             90              // 절연구간 (운용, 1계, 2계)
-#define MAX_FALL_LOCK                60              // 지장물 (낙석, 보호)
 
-#define MAX_STL                      8               // 출발반응등 최대 수
+#define MAX_DEAD_SECTION             30              // 절연구간 (운용, 1계, 2계) ------ (90)
+#define MAX_FALL_LOCK                30              // 지장물 (낙석, 보호)  ----------- (60)
+
+#define MAX_STL                      9               // 출발반응등 최대 수 ------------- (8)
 #define MAX_ATTRACT                  30              // 끌림 감시장치 최대 수
 #define MAX_ETC_FAULT                20              // 기타 고장정보 최대 수
-
-#define MAX_BLOCK                    16              // 최대 폐색제어 수
 
 #define MAX_APP_LOCK                 20              // 접근궤도 수
 #define MAX_APP_LOCK_SWITCH          10              // 접근쇄정시 선로전환기 수
@@ -95,11 +95,11 @@ typedef unsigned short Word_t;
 #define MAX_EMG_STOP_SIGNAL          10              // 비상정지 관련 신호기 최대 수
 #define MAX_EMG_STOP_TRACK           40              // 비상정지 관련 궤  도 최대 수
 
-#define MAX_SLOW_ORDER               8               // Slow Order(임시속도) 설정 최대 수
+#define MAX_SLOW_ORDER               9               // Slow Order(임시속도) 설정 최대 수 ----------- (8)
 #define MAX_SLOW_ORDER_SIGNAL        5               // Slow Order(임시속도) 관련 신호기 최대 수
 #define MAX_SLOW_ORDER_TRACK         20              // Slow Order(임시속도) 관련 궤  도 최대 수
 
-#define MAX_DWELL                    10              // DwellInfoType 최대 수
+#define MAX_DWELL                    11              // DwellInfoType 최대 수 ----------------------- (10)
 #define MAX_DWELL_TRACK_FLATFORM     4               // 플랫폼 궤도 최대 수
 #define MAX_DWELL_TRACK_EMG          5               // 비상정지 설정 궤도 최대 수
 
@@ -109,7 +109,7 @@ typedef unsigned short Word_t;
 #define MAX_CNT_EF_TRACK             10              // 유효장 궤도 최대 수
 #define MAX_CNT_SPC_STATE            10              // 타역설비의 조건 최대 수
 
-#define MAX_CNT_HEATER               10              // Heat 최대 수
+#define MAX_CNT_HEATER               11              // Heat 최대 수 ----------------------- (10)
 #define MAX_CNT_HEATER_ALM           10              // Heat Alarm 최대 수
 
 //#define MAX_CNT_ALARM                200             // Alarm 최대 수
@@ -508,7 +508,7 @@ typedef struct DATA_PACKED_START _RouteInfoType_t
     Word_t  BlockSigRteNo[MAX_HOME_BLOCK_ROUTE];  // 진로에 구내폐색 있음(0x01 == Kind.IsBlock) 일 때 : 구내폐색 진로
                                                   // 구내폐색 진로일 때 : 해당진로를 포함하는 진로
 
-    Word_t  InhibitRteNo[MAX_INHIBIT_ROUTE];      // 대항진로 (MAX_INHIBIT_ROUTE = 20)
+    Word_t  InhibitRteNo[MAX_INHIBIT_ROUTE];      // 대항진로
                                                   // 현시 및 쇄정 상태에서 대항진로는 취급 및 현시 불가
 
     // --------------------------------------------------------------------
@@ -1209,13 +1209,13 @@ typedef struct DATA_PACKED_START _LC_CTRL_INFO_TYPE_t
     Byte_t  Name1[10];
     Byte_t  Name2[10];
 
-    Byte_t  LcNo;
+    Byte_t  LcNo;        // 건널목 번호(Index)
 
-    Byte_t  Status;      // bit 0 = 0 : 출력여자일 때 입력여자
-                         //         1 : 출력여자일 때 입력낙하
-                         // bit 1 = 1 : 부정입력 없음
-                         // bit 2 = 1 : 부정출력 없음 - 사용하지 않음
-                         // bit 3 = 1 : 동작불능 없음
+    Byte_t  Status;      // bit0=0 : 출력여자일 때 입력여자
+                         //      1 : 출력여자일 때 입력낙하
+                         // bit1=1 : 부정입력 없음
+                         // bit2=1 : 부정출력 없음 - 사용하지 않음
+                         // bit3=1 : 동작불능 없음
 
     IO_Position    LC_Inp;    // 입력
     IO_Position    LC_Out;    // 출력

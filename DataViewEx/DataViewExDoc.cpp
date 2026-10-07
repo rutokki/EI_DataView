@@ -144,9 +144,8 @@ BOOL CDataViewExDoc::ReadMainBinData(CString filePath)
 			// [수정] DBstruct 구조체가 바뀌면(예: MAX_STL 5 -> 8) 이전 구조체로 만든 bin 파일은 크기가 달라 읽을 수 없음.
 			//        원인을 바로 알 수 있도록 파일 크기와 현재 구조체 크기를 함께 표시
 			CString strMsg;
-			strMsg.Format(_T("bin 데이터 파일의 크기나 형식이 맞지 않습니다.\n(파일 크기: %I64u bytes, 기대 크기(DBstruct): %u bytes)\n\n")
-				_T("DBStruct 구조체 버전과 다른 버전으로 생성된 파일인지 확인하세요."),
-				nFileSize, (UINT)sizeof(DBstruct));
+			strMsg.Format(_T("bin 데이터 파일의 크기나 형식이 맞지 않습니다.")
+			);
 			BCGPMessageBox(strMsg);
 			file.Close();
 		}
@@ -251,8 +250,7 @@ BOOL CDataViewExDoc::ReadIOCardData(CString& filePath) // IOCard.bin 파일 읽�
 		if (nRead != sizeof(CARD_INFO))
 		{
 			CString strMsg;
-			strMsg.Format(_T("IO카드.bin 파일의 크기나 형식이 맞지 않습니다.\n(파일 크기: %I64u bytes, 기대 크기: %u bytes)"),
-				nFileSize, (UINT)sizeof(CARD_INFO));
+			strMsg.Format(_T("IO카드.bin 파일의 크기나 형식이 맞지 않습니다."));
 			BCGPMessageBox(strMsg);
 			return FALSE;
 		}

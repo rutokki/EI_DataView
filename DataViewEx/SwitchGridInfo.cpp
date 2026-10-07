@@ -40,8 +40,12 @@ namespace
 				// 이 포트가 조회 중인 스위치(nIdx)를 가리키는 포트가 아니면 건너뜀
 				if (portItem.Idx != nIdx) continue;
 
-				if (cardItem.NoseAB == 'A') { side.bIsA = true; side.strNameA = GetName(portItem); }
-				if (cardItem.NoseAB == 'B') { side.bIsB = true; side.strNameB = GetName(portItem); }
+				if (cardItem.NoseAB == 'A') {
+					side.bIsA = true; side.strNameA = GetName(portItem);
+				}
+				if (cardItem.NoseAB == 'B') {
+					side.bIsB = true; side.strNameB = GetName(portItem);
+				}
 			}
 		}
 
@@ -134,14 +138,7 @@ void SwitchGridInfo::LoadAllSwitchData()
 }
 void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchItem, Byte_t nIdx)
 {
-	// [수정] 이 배열은 1~6번(단동/쌍동/삼동/사동/시서스/노스가동) "종류" O/X 칼럼만 채움.
-	// SpcSwitch/DirKind는 원래 여기 섞여 있었으나:
-	//  - DirKind(정위/반위 방향, 2비트 인코딩)는 "종류" 비트 플래그가 아니고 이미 바로 아래에서
-	//    9~10번(정위/반위) 칼럼으로 별도 처리되고 있어 제외.
-	//  - SpcSwitch(bit0=타역 선로전환기)는 실제로는 8번 "타역" 칼럼용인데, 배열 순서(i+1) 때문에
-	//    7번 "표시" 칼럼에 잘못 표시되고 있었음 -> 아래에서 8번 칼럼에 직접 표시하도록 분리.
-	// (7번 "표시" 칼럼은 대응하는 실제 필드가 없어 비워둠. 로컬 출력(Kind.LocalOut) 관련은
-	// 매핑하지 않기로 확정함 - 사용자 확인: 로컬 출력 제거)
+
 	SCBitCheckInfo switchList[] = {
 		{&switchItem.Kind.Single, SwitchInfoT::SINGLE},
 		{&switchItem.Kind.Double, SwitchInfoT::DOUBLE},
@@ -156,7 +153,7 @@ void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchIte
 		pRow->GetItem(10)->SetValue(_T("L방향"));
 	}
 	else if (switchItem.Kind.DirKind & SwitchInfoT::DIRKINDBIT1) {
-		// DirKind bit0=1 : 정위 L방향, 반위 R방향 ([수정] 반위가 "B방향" 으로 잘못 표시되던 오타 수정)
+
 		pRow->GetItem(9)->SetValue(_T("L방향"));
 		pRow->GetItem(10)->SetValue(_T("R방향"));
 	}
@@ -217,14 +214,14 @@ void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchIte
 		SwitchNoseSide side = GetSwitchNoseSide(nIdx);
 
 		auto SetCell = [&](int nCol, const CString& strText)
-		{
-			if (strText.IsEmpty()) return;
-			CBCGPGridItem* pItem = pRow->GetItem(nCol);
-			if (pItem == nullptr) return;
-			pItem->SetValue((LPCTSTR)strText);
-			pItem->SetTextColor(RGB(0, 0, 0)); // 판별 결과 텍스트가 보이도록 (배경색과 동일하면 글자가 안 보임)
-			pItem->SetBackgroundColor(RGB(80, 205, 80));
-		};
+			{
+				if (strText.IsEmpty()) return;
+				CBCGPGridItem* pItem = pRow->GetItem(nCol);
+				if (pItem == nullptr) return;
+				pItem->SetValue((LPCTSTR)strText);
+				pItem->SetTextColor(RGB(0, 0, 0)); // 판별 결과 텍스트가 보이도록 (배경색과 동일하면 글자가 안 보임)
+				pItem->SetBackgroundColor(RGB(80, 205, 80));
+			};
 		if (side.bIsA)
 		{
 			SetCell(11, GetNoseSideRoleText(nNoseType, true));   // A호 : NS-AM / MJ81
@@ -234,10 +231,10 @@ void SwitchGridInfo::SetSwitchType(CBCGPGridRow* pRow, SwitchInfoType& switchIte
 			SetCell(12, GetNoseSideRoleText(nNoseType, false));  // B호 : NS-AM / MJ81
 		}
 		// 단동 노스가동(MJ81 단동)은 카드에 A호/B호 구분(NoseAB)이 없으므로 A호 칼럼에 "노스가동" 표시
-		if (nNoseType == CommonUtil::Nose && !side.bIsA && !side.bIsB)
-		{
-			SetCell(11, GetNoseSideRoleText(nNoseType, true));
-		}
+		//if (nNoseType == CommonUtil::Nose && !side.bIsA && !side.bIsB)
+		//{
+		//	SetCell(11, GetNoseSideRoleText(nNoseType, true));
+		//}
 	}
 }
 void SwitchGridInfo::UpdateSwitchData()

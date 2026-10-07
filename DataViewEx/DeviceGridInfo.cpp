@@ -119,9 +119,10 @@ CString DeviceGridInfo::GetBlcokAspectFromByte(Byte_t blkKind, Byte_t aspectCoun
 		str.Format(_T("%d현시"), aspectCount);
 		return str;
 	}
+
 	// [수정] 현시 수 개념이 없는 폐색(연동/통표/지하철 등)은 BlockAspect 미설정(0)이 정상이므로 오류로 표시하지 않음
 	if (aspectCount == 0) return _T("-");
-	return _T("잘못된 현시 데이터");
+	return _T("X");
 }
 int DeviceGridInfo::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
@@ -277,12 +278,12 @@ void DeviceGridInfo::LoadAllData()
 			continue;
 		}
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
-		pRow->SetLinesNumber(2);
+		pRow->SetLinesNumber(4);
 		pRow->GetItem(0)->SetValue(_T("지장물"));
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
 		CString strResult = _T("");
 		// [수정] 이름을 서식 문자열로 넘기던 것('%' 포함 시 오동작) 수정, 보호 Name2 가 라벨 없이 붙던 것 정리
-		strResult.AppendFormat(_T("낙석 : %s\r\n"), (LPCTSTR)GetSafeString(item.FallLock.Name));
+		strResult.AppendFormat(_T("낙석 : %s \r\n"), (LPCTSTR)GetSafeString(item.FallLock.Name));
 		strResult.AppendFormat(_T("보호 : %s"), (LPCTSTR)GetSafeString(item.Proc.Name1));
 		CString strProc2 = GetSafeString(item.Proc.Name2);
 		if (!strProc2.IsEmpty()) strResult.AppendFormat(_T(", %s"), (LPCTSTR)strProc2);
@@ -311,14 +312,14 @@ void DeviceGridInfo::LoadAllData()
 			continue;
 		}
 		CBCGPGridRow* pRow = CreateRow(GetColumnCount());
-		pRow->SetLinesNumber(2);
+		pRow->SetLinesNumber(4);
 		pRow->GetItem(0)->SetValue(_T("절연구간"));
 		pRow->GetItem(1)->SetValue((LPCTSTR)GetSafeString(item.Name, 20));
 		CString strResult = _T("");
 		// [수정] 1계/2계는 주계/부계 고정이 아니고(운용 Input 여자:1계 주계, 낙하:2계 주계),
 		//        두 항목 사이 줄바꿈이 없었으며 운용(Unit_Act) 입력은 표시되지 않았음
-		strResult.AppendFormat(_T("1계 : %s\r\n"), (LPCTSTR)GetSafeString(item.Unit1.Name));
-		strResult.AppendFormat(_T("2계 : %s\r\n"), (LPCTSTR)GetSafeString(item.Unit2.Name));
+		strResult.AppendFormat(_T("1계 : %s \r\n"), (LPCTSTR)GetSafeString(item.Unit1.Name));
+		strResult.AppendFormat(_T("2계 : %s \r\n"), (LPCTSTR)GetSafeString(item.Unit2.Name));
 		strResult.AppendFormat(_T("운용 : %s"), (LPCTSTR)GetSafeString(item.Unit_Act.Name));
 		pRow->GetItem(4)->SetValue((LPCTSTR)strResult);
 		pRow->GetItem(4)->SetMultiline(TRUE); // 멀티라인 텍스트 활성화

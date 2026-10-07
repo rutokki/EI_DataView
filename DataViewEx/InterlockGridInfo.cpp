@@ -140,10 +140,10 @@ CString InterlockGridInfo::GetRouteLockStr(const InterLockInfoType& item)
 		// 궤도 번호를 이름으로 변환
 		CString strTrackName = CommonUtil::GetDBNameByNumber(static_cast<Byte_t>(item.RouteLock[i].TrackNo), GetDBNameByNum::TrackIdx);
 		CString strRouteLockKind;
-		if (item.RouteLock[i].Kind == 1) strRouteLockKind = _T("진로쇄정 궤도(TRACK_ROUTELOCK)");
-		else if (item.RouteLock[i].Kind == 2) strRouteLockKind = _T("접촉관계 쇄정(TRACK_TRACKLOCK)");
-		else if (item.RouteLock[i].Kind == 3) strRouteLockKind = _T("임의 쇄정(TRACK_TEMPLOCK) - DelTrack");
-		else if (item.RouteLock[i].Kind == 4) strRouteLockKind = _T("임의 쇄정(TRACK_SPECIALLOCK)");
+		if (item.RouteLock[i].Kind == 1) strRouteLockKind = _T("진로쇄정 궤도");
+		else if (item.RouteLock[i].Kind == 2) strRouteLockKind = _T("접촉관계 쇄정");
+		else if (item.RouteLock[i].Kind == 3) strRouteLockKind = _T("임의 쇄정-Deltrack");
+		else if (item.RouteLock[i].Kind == 4) strRouteLockKind = _T("임의 쇄정");
 
 		temp.Format(_T("%s(%s)"), (LPCTSTR)strTrackName, (LPCTSTR)strRouteLockKind);
 		strRouteLock += temp;
