@@ -14,6 +14,10 @@ TagNamePrintDlg::TagNamePrintDlg(CWnd* pParent /*=nullptr*/)
 	, m_cellHeightMm(4) // Default height (0.5cm ~ 2.0cm)
 	, m_nCurrentPage(0)
 	, m_cellSpacingYMm(0.5)
+	, m_isOutCard(false)
+	, m_nPortsPerCard(16)
+	, m_strCardLabel(_T("In"))
+	, m_strListTitle(_T("IN Card List"))
 {
 	EnableVisualManagerStyle(TRUE, TRUE);
 }
@@ -382,7 +386,7 @@ void TagNamePrintDlg::OnPaint()
 		{
 			// 중복 선언 방지를 위해 상단에서 카드 및 포트 규격 통합 선언
 			int maxCardsPerPage = 20; // 5번 조건: 20장마다 새로운 페이지
-			int maxPortsPerCard = 16; // 7번 조건: 카드 1장당 16개의 포트 (MAX_IO_CARD_PORT)
+			int maxPortsPerCard = m_nPortsPerCard; // [수정] 카드 종류별 포트 수 (IN/OUT 16, 신호기 4, 선로전환기 2)
 
 			int totalPorts = (int)tagName.size();
 			int totalCards = (totalPorts + maxPortsPerCard - 1) / maxPortsPerCard;
@@ -395,7 +399,8 @@ void TagNamePrintDlg::OnPaint()
 			dc.SetBkMode(TRANSPARENT);
 			COLORREF oldTextColor = dc.SetTextColor(RGB(0, 0, 0));
 
-			CString titlePrefix = m_isOutCard ? _T("[ [역] * OUT Card List * ]") : _T("[ [역] * IN Card List * ]");
+			CString titlePrefix;
+			titlePrefix.Format(_T("[ [역] * %s * ]"), (LPCTSTR)m_strListTitle);
 			// 제목 영역 여백 축소
 			CRect rectTitle(rectA4.left + 15, rectA4.top + 5, rectA4.right - 15, rectA4.top + 20);
 			dc.DrawText(titlePrefix, &rectTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
@@ -443,7 +448,7 @@ void TagNamePrintDlg::OnPaint()
 				int nHeaderHeight = (int)(nLabelHeight * 0.6); // 헤더 높이를 0.6배로 고정
 
 				CString headerStr;
-				headerStr.Format(_T("%s %d"), m_isOutCard ? _T("Out") : _T("In"), cardNum + 1);
+				headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
 
 				// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
 				// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
@@ -560,7 +565,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 			int nMarginY = (int)((10.0 / 25.4) * dpiY);
 
 			int maxCardsPerPage = 20; // 5번 조건: 20장마다 새로운 페이지
-			int maxPortsPerCard = 16; // 7번 조건: 카드 1장당 16개의 포트
+			int maxPortsPerCard = m_nPortsPerCard; // [수정] 카드 종류별 포트 수 (IN/OUT 16, 신호기 4, 선로전환기 2)
 
 			int totalPorts = (int)tagName.size();
 			int totalCards = (totalPorts + maxPortsPerCard - 1) / maxPortsPerCard;
@@ -579,7 +584,8 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 
 				dc.SelectObject(&titleFont);
 				COLORREF oldTextColor = dc.SetTextColor(RGB(0, 0, 0));
-				CString titlePrefix = m_isOutCard ? _T("[ * OUT Card List * ]") : _T("[ * IN Card List * ]");
+				CString titlePrefix;
+				titlePrefix.Format(_T("[ * %s * ]"), (LPCTSTR)m_strListTitle);
 				CRect rectTitle(nMarginX, nMarginY, nMarginX + (int)(150.0 * dpiX / 25.4), nMarginY + (int)(8.0 * dpiY / 25.4));
 				dc.DrawText(titlePrefix, &rectTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
@@ -603,7 +609,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					int nHeaderHeight = (int)(nLabelHeight * 0.6); // 헤더 높이를 0.6배로 고정
 
 					CString headerStr;
-					headerStr.Format(_T("%s %d"), m_isOutCard ? _T("Out") : _T("In"), cardNum + 1);
+					headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
 
 					// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
 					// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
@@ -763,7 +769,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrevPage()
 void TagNamePrintDlg::OnBnClickedBtnNextPage()
 {
 	int maxCardsPerPage = 20;
-	int maxPortsPerCard = 16;
+	int maxPortsPerCard = m_nPortsPerCard; // [수정] 카드 종류별 포트 수
 	int totalPorts = (int)tagName.size();
 	int totalCards = (totalPorts + maxPortsPerCard - 1) / maxPortsPerCard;
 	int totalPages = (totalCards + maxCardsPerPage - 1) / maxCardsPerPage;

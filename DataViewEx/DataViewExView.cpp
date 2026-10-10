@@ -10,6 +10,7 @@
 #include "FontSetting.h"
 #include "GridColumnDefine.h"
 #include "TagNamePrintDlg.h"
+#include "CommonUtils.h"
 #include "DiffCompareFrame.h"
 #include "TestPrintDlg.h"
 #ifdef _DEBUG
@@ -38,6 +39,8 @@ BEGIN_MESSAGE_MAP(CDataViewExView, CView)
 	ON_MESSAGE(WM_CONTAINER_CMD, &CDataViewExView::OnContainerCommand)
 	ON_COMMAND(ID_TAG_INCARD, &CDataViewExView::OnTagIncard)
 	ON_COMMAND(ID_TAG_OUTCARD, &CDataViewExView::OnTagOutcard)
+	ON_COMMAND(ID_TAG_SIGCARD, &CDataViewExView::OnTagSigcard)
+	ON_COMMAND(ID_TAG_SWHCARD, &CDataViewExView::OnTagSwhcard)
 	ON_COMMAND(ID_DIFF_TOOL, &CDataViewExView::OnDiffTool)
 	ON_COMMAND(ID_FILE_SAVE, &CDataViewExView::OnFileSave)
 	ON_COMMAND(ID_APP_DIFF, &CDataViewExView::OnAppDiff)
@@ -710,6 +713,7 @@ void CDataViewExView::OnTagIncard()
 	TagNamePrintDlg printDlg;
 	printDlg.tagName = names;
 	printDlg.m_isOutCard = bIsOutCard;
+	printDlg.SetCardKind(MAX_IO_CARD_PORT, _T("In"), _T("IN Card List"));
 	printDlg.DoModal();
 }
 
@@ -767,6 +771,87 @@ void CDataViewExView::OnTagOutcard()
 	TagNamePrintDlg printDlg;
 	printDlg.tagName = names;
 	printDlg.m_isOutCard = bIsOutCard;
+	printDlg.SetCardKind(MAX_IO_CARD_PORT, _T("Out"), _T("OUT Card List"));
+	printDlg.DoModal();
+}
+
+// ==========================================================================
+// [추가] 신호기 / 선로전환기 카드 표찰 인쇄
+//  IN/OUT 과 달리 그리드가 아니라 카드 구조체(SIGNALLIST / SWITCHLIST)에서 직접 읽어
+//  카드 1장당 포트 수(신호기 MAX_SIG_MODULE_PORT=4, 선로전환기 MAX_SWH_MODULE_PORT=2)만큼
+//  고정 칸으로 채운다 (미사용 포트는 빈 표찰) -> 카드 경계가 어긋나지 않음.
+//  표찰 이름은 TagName, 비어있으면 Name (EI_IP_IOCard_Typedef.h : "설정하지 않으면 Name 동일한 값으로 설정")
+//  카드 순서/범위는 각 카드 그리드와 동일 (RackNo 0 제외, 역정보의 카드 수 NoOfModuleSig/Swh 까지)
+// ==========================================================================
+namespace
+{
+	template <typename CARD_T, size_t N>
+	bool CollectModuleCardTags(std::span<CARD_T> cardList, UINT nMaxCard, std::vector<CString>& names)
+	{
+		names.clear();
+		bool bHasTag = false;
+		UINT nCardNo = 0;
+		for (const auto& card : cardList)
+		{
+			if (card.RackNo == 0) continue;
+			if (++nCardNo > nMaxCard) break;
+
+			for (size_t nPort = 1; nPort <= N; nPort++) // CardData Index : 1부터 사용
+			{
+				const auto& port = card.CardData[nPort];
+				CString strTag = CommonUtil::GetTagName(port);
+				if (strTag.IsEmpty()) strTag = CommonUtil::GetName(port);
+				if (!strTag.IsEmpty()) bHasTag = true;
+				names.push_back(strTag);
+			}
+		}
+		return bHasTag;
+	}
+}
+
+void CDataViewExView::OnTagSigcard()
+{
+	auto& md = StructMainData::GetInstance();
+	if (md.EIIOCard == nullptr || md.EIDBStruct == nullptr)
+	{
+		AfxMessageBox(_T("IO카드 데이터가 로드되지 않았습니다."));
+		return;
+	}
+
+	std::vector<CString> names;
+	if (!CollectModuleCardTags<SIG_CARDTABLE, MAX_SIG_MODULE_PORT>(md.GetSignalCardInfo(), md.GetStationInfo().NoOfModuleSig, names))
+	{
+		AfxMessageBox(_T("인쇄할 신호기 카드 표찰 데이터가 존재하지 않습니다."));
+		return;
+	}
+
+	TagNamePrintDlg printDlg;
+	printDlg.tagName = names;
+	printDlg.m_isOutCard = false;
+	printDlg.SetCardKind(MAX_SIG_MODULE_PORT, _T("Sig"), _T("SIGNAL Card List"));
+	printDlg.DoModal();
+}
+
+void CDataViewExView::OnTagSwhcard()
+{
+	auto& md = StructMainData::GetInstance();
+	if (md.EIIOCard == nullptr || md.EIDBStruct == nullptr)
+	{
+		AfxMessageBox(_T("IO카드 데이터가 로드되지 않았습니다."));
+		return;
+	}
+
+	std::vector<CString> names;
+	if (!CollectModuleCardTags<SWH_CARDTABLE, MAX_SWH_MODULE_PORT>(md.GetSwitchCardInfo(), md.GetStationInfo().NoOfModuleSwh, names))
+	{
+		AfxMessageBox(_T("인쇄할 선로전환기 카드 표찰 데이터가 존재하지 않습니다."));
+		return;
+	}
+
+	TagNamePrintDlg printDlg;
+	printDlg.tagName = names;
+	printDlg.m_isOutCard = false;
+	printDlg.SetCardKind(MAX_SWH_MODULE_PORT, _T("Swh"), _T("SWITCH Card List"));
 	printDlg.DoModal();
 }
 void CDataViewExView::OnDiffTool()

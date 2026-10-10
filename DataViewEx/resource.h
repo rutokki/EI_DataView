@@ -778,6 +778,8 @@
 #define ID_VIEW_TOOLBARS32861           32861
 #define ID_TAG_INCARD                   32862
 #define ID_TAG_OUTCARD                  32863
+#define ID_TAG_SIGCARD                  32869
+#define ID_TAG_SWHCARD                  32870
 #define ID_APP_DIFF                     32865
 #define ID_DIFF_TOOL                    32865
 #define ID_SUB_FILE_OPEN                32866
