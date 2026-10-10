@@ -10,6 +10,7 @@
 #include "FontSetting.h"
 #include "GridColumnDefine.h"
 #include "TagNamePrintDlg.h"
+#include "CommonUtils.h"
 #include "DiffCompareFrame.h"
 #include "TestPrintDlg.h"
 #ifdef _DEBUG
@@ -38,6 +39,8 @@ BEGIN_MESSAGE_MAP(CDataViewExView, CView)
 	ON_MESSAGE(WM_CONTAINER_CMD, &CDataViewExView::OnContainerCommand)
 	ON_COMMAND(ID_TAG_INCARD, &CDataViewExView::OnTagIncard)
 	ON_COMMAND(ID_TAG_OUTCARD, &CDataViewExView::OnTagOutcard)
+	ON_COMMAND(ID_TAG_SIGCARD, &CDataViewExView::OnTagSigcard)
+	ON_COMMAND(ID_TAG_SWHCARD, &CDataViewExView::OnTagSwhcard)
 	ON_COMMAND(ID_DIFF_TOOL, &CDataViewExView::OnDiffTool)
 	ON_COMMAND(ID_FILE_SAVE, &CDataViewExView::OnFileSave)
 	ON_COMMAND(ID_APP_DIFF, &CDataViewExView::OnAppDiff)
@@ -710,6 +713,7 @@ void CDataViewExView::OnTagIncard()
 	TagNamePrintDlg printDlg;
 	printDlg.tagName = names;
 	printDlg.m_isOutCard = bIsOutCard;
+	printDlg.SetCardKind(MAX_IO_CARD_PORT, _T("In"), _T("IN Card List"));
 	printDlg.DoModal();
 }
 
@@ -767,6 +771,126 @@ void CDataViewExView::OnTagOutcard()
 	TagNamePrintDlg printDlg;
 	printDlg.tagName = names;
 	printDlg.m_isOutCard = bIsOutCard;
+	printDlg.SetCardKind(MAX_IO_CARD_PORT, _T("Out"), _T("OUT Card List"));
+	printDlg.DoModal();
+}
+
+// ==========================================================================
+// [추가] 신호기 / 선로전환기 카드 표찰 인쇄
+//  IN/OUT 과 달리 그리드가 아니라 카드 구조체(SIGNALLIST / SWITCHLIST)에서 직접 읽어
+//  모듈 앞면 표찰 칸 수(CardKind 별)만큼 이름 칸만 인쇄 (머리표 없음, 미사용 포트는 빈 표찰)
+//  표찰 이름은 TagName, 비어있으면 Name (EI_IP_IOCard_Typedef.h : "설정하지 않으면 Name 동일한 값으로 설정")
+//  카드 순서/범위는 각 카드 그리드와 동일 (RackNo 0 제외, 역정보의 카드 수 NoOfModuleSig/Swh 까지)
+// ==========================================================================
+namespace
+{
+	// [추가] 모듈 앞면 표찰 칸 수 (HW 설계서 기준)
+	//  - 신호기   : 3 = 4등형(주신호기 2개) -> 2칸, 4 = 2등형(입환신호기 4개) -> 4칸
+	//  - 선로전환기 : 5 = NS-AM(선로전환기 2대) -> 2칸, 6 = MJ81(선로전환기 1대, 첨단/크로싱) -> 1칸
+	int GetModuleNameCells(Byte_t cardKind, int nMaxPort)
+	{
+		switch (cardKind)
+		{
+		case 3: return 2;
+		case 4: return 4;
+		case 5: return 2;
+		case 6: return 1;
+		default: return nMaxPort;
+		}
+	}
+
+	// 신호기 / 선로전환기 카드 표찰 이름 수집 (모듈 순서대로, 모듈별 칸 수만큼)
+	template <typename CARD_T, size_t N>
+	bool CollectModuleCardTags(std::span<CARD_T> cardList, UINT nMaxCard, std::vector<CString>& names, std::vector<int>& cellCounts)
+	{
+		names.clear();
+		cellCounts.clear();
+		bool bHasTag = false;
+		UINT nCardNo = 0;
+		for (const auto& card : cardList)
+		{
+			if (card.RackNo == 0) continue;
+			if (++nCardNo > nMaxCard) break;
+
+			std::vector<CString> portNames;
+			for (size_t nPort = 1; nPort <= N; nPort++) // CardData Index : 1부터 사용
+			{
+				const auto& port = card.CardData[nPort];
+				CString strTag = CommonUtil::GetTagName(port);
+				if (strTag.IsEmpty()) strTag = CommonUtil::GetName(port);
+				portNames.push_back(strTag);
+			}
+
+			int nCells = GetModuleNameCells(card.CardKind, (int)N);
+			if (nCells == 1)
+			{
+				// MJ81 : 첨단/크로싱이 같은 선로전환기 -> 비어있지 않은 첫 이름 1칸
+				CString strName;
+				for (const auto& str : portNames)
+				{
+					if (!str.IsEmpty()) { strName = str; break; }
+				}
+				names.push_back(strName);
+			}
+			else
+			{
+				for (int i = 0; i < nCells; i++) names.push_back(portNames[i]);
+			}
+			cellCounts.push_back(nCells);
+		}
+		for (const auto& str : names)
+		{
+			if (!str.IsEmpty()) { bHasTag = true; break; }
+		}
+		return bHasTag;
+	}
+}
+
+void CDataViewExView::OnTagSigcard()
+{
+	auto& md = StructMainData::GetInstance();
+	if (md.EIIOCard == nullptr || md.EIDBStruct == nullptr)
+	{
+		AfxMessageBox(_T("IO카드 데이터가 로드되지 않았습니다."));
+		return;
+	}
+
+	std::vector<CString> names;
+	std::vector<int> cellCounts;
+	if (!CollectModuleCardTags<SIG_CARDTABLE, MAX_SIG_MODULE_PORT>(md.GetSignalCardInfo(), md.GetStationInfo().NoOfModuleSig, names, cellCounts))
+	{
+		AfxMessageBox(_T("인쇄할 신호기 카드 표찰 데이터가 존재하지 않습니다."));
+		return;
+	}
+
+	TagNamePrintDlg printDlg;
+	printDlg.tagName = names;
+	printDlg.m_isOutCard = false;
+	printDlg.SetModuleCards(cellCounts, _T("SIGNAL Card List"));
+	printDlg.DoModal();
+}
+
+void CDataViewExView::OnTagSwhcard()
+{
+	auto& md = StructMainData::GetInstance();
+	if (md.EIIOCard == nullptr || md.EIDBStruct == nullptr)
+	{
+		AfxMessageBox(_T("IO카드 데이터가 로드되지 않았습니다."));
+		return;
+	}
+
+	std::vector<CString> names;
+	std::vector<int> cellCounts;
+	if (!CollectModuleCardTags<SWH_CARDTABLE, MAX_SWH_MODULE_PORT>(md.GetSwitchCardInfo(), md.GetStationInfo().NoOfModuleSwh, names, cellCounts))
+	{
+		AfxMessageBox(_T("인쇄할 선로전환기 카드 표찰 데이터가 존재하지 않습니다."));
+		return;
+	}
+
+	TagNamePrintDlg printDlg;
+	printDlg.tagName = names;
+	printDlg.m_isOutCard = false;
+	printDlg.SetModuleCards(cellCounts, _T("SWITCH Card List"));
 	printDlg.DoModal();
 }
 void CDataViewExView::OnDiffTool()

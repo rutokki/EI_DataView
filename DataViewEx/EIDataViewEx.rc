@@ -553,6 +553,8 @@ BEGIN
         BEGIN
             MENUITEM "INCARD",                      ID_TAG_INCARD, CHECKED
             MENUITEM "OUTCARD",                     ID_TAG_OUTCARD, CHECKED
+            MENUITEM "SIGCARD",                     ID_TAG_SIGCARD
+            MENUITEM "SWHCARD",                     ID_TAG_SWHCARD
         END
     END
     POPUP "&Help"

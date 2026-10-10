@@ -14,6 +14,10 @@ TagNamePrintDlg::TagNamePrintDlg(CWnd* pParent /*=nullptr*/)
 	, m_cellHeightMm(4) // Default height (0.5cm ~ 2.0cm)
 	, m_nCurrentPage(0)
 	, m_cellSpacingYMm(0.5)
+	, m_isOutCard(false)
+	, m_nPortsPerCard(16)
+	, m_strCardLabel(_T("In"))
+	, m_strListTitle(_T("IN Card List"))
 {
 	EnableVisualManagerStyle(TRUE, TRUE);
 }
@@ -336,6 +340,31 @@ END_MESSAGE_MAP()
 //		AfxMessageBox(_T("표찰 인쇄 작업이 완료되었습니다."));
 //	}
 //}
+// [추가] 카드(모듈) 수 / 시작 위치 / 이름 칸 수
+//  - IN/OUT 카드 : 카드당 m_nPortsPerCard 칸 고정
+//  - 신호기 / 선로전환기 모듈 : m_cardCellCounts 의 모듈별 칸 수
+int TagNamePrintDlg::GetCardCount() const
+{
+	if (IsNameOnly()) return (int)m_cardCellCounts.size();
+	int totalPorts = (int)tagName.size();
+	return (totalPorts + m_nPortsPerCard - 1) / m_nPortsPerCard;
+}
+
+int TagNamePrintDlg::GetCardStart(int nCard) const
+{
+	if (!IsNameOnly()) return nCard * m_nPortsPerCard;
+	int nStart = 0;
+	for (int i = 0; i < nCard && i < (int)m_cardCellCounts.size(); ++i)
+		nStart += m_cardCellCounts[i];
+	return nStart;
+}
+
+int TagNamePrintDlg::GetCardCells(int nCard) const
+{
+	if (!IsNameOnly()) return m_nPortsPerCard;
+	return (nCard >= 0 && nCard < (int)m_cardCellCounts.size()) ? m_cardCellCounts[nCard] : 0;
+}
+
 void TagNamePrintDlg::OnPaint()
 {
 	CPaintDC dc(this);
@@ -382,10 +411,9 @@ void TagNamePrintDlg::OnPaint()
 		{
 			// 중복 선언 방지를 위해 상단에서 카드 및 포트 규격 통합 선언
 			int maxCardsPerPage = 20; // 5번 조건: 20장마다 새로운 페이지
-			int maxPortsPerCard = 16; // 7번 조건: 카드 1장당 16개의 포트 (MAX_IO_CARD_PORT)
 
 			int totalPorts = (int)tagName.size();
-			int totalCards = (totalPorts + maxPortsPerCard - 1) / maxPortsPerCard;
+			int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
 			int totalPages = (totalCards + maxCardsPerPage - 1) / maxCardsPerPage;
 			if (totalPages == 0) totalPages = 1;
 
@@ -395,7 +423,8 @@ void TagNamePrintDlg::OnPaint()
 			dc.SetBkMode(TRANSPARENT);
 			COLORREF oldTextColor = dc.SetTextColor(RGB(0, 0, 0));
 
-			CString titlePrefix = m_isOutCard ? _T("[ [역] * OUT Card List * ]") : _T("[ [역] * IN Card List * ]");
+			CString titlePrefix;
+			titlePrefix.Format(_T("[ [역] * %s * ]"), (LPCTSTR)m_strListTitle);
 			// 제목 영역 여백 축소
 			CRect rectTitle(rectA4.left + 15, rectA4.top + 5, rectA4.right - 15, rectA4.top + 20);
 			dc.DrawText(titlePrefix, &rectTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
@@ -443,33 +472,39 @@ void TagNamePrintDlg::OnPaint()
 				int nHeaderHeight = (int)(nLabelHeight * 0.6); // 헤더 높이를 0.6배로 고정
 
 				CString headerStr;
-				headerStr.Format(_T("%s %d"), m_isOutCard ? _T("Out") : _T("In"), cardNum + 1);
+				headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
 
-				// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
-				// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
-				CRect rectTop1(currentX + nHalfWidth, topSectionY, currentX + nLabelWidth, topSectionY + nHeaderHeight);
-				dc.FillSolidRect(&rectTop1, RGB(120, 120, 120)); // 사진처럼 약간 밝은 회색
-				dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
-				dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+				// [추가] 신호기 / 선로전환기 모듈은 머리표 없이 이름 칸만 인쇄
+				int dataStartY = topSectionY;
+				if (!IsNameOnly())
+				{
+					// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
+					// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
+					CRect rectTop1(currentX + nHalfWidth, topSectionY, currentX + nLabelWidth, topSectionY + nHeaderHeight);
+					dc.FillSolidRect(&rectTop1, RGB(120, 120, 120)); // 사진처럼 약간 밝은 회색
+					dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-				// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
-				int top2Y = topSectionY + nHeaderHeight + nSpacingY;
-				CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
-				CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
+					// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
+					int top2Y = topSectionY + nHeaderHeight + nSpacingY;
+					CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
+					CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
 
-				dc.FillSolidRect(&rectTop2_1, RGB(80, 80, 80)); // 사진처럼 약간 어두운 회색
-				dc.Draw3dRect(&rectTop2_1, RGB(50, 50, 50), RGB(200, 200, 200));
-				dc.DrawText(headerStr, &rectTop2_1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					dc.FillSolidRect(&rectTop2_1, RGB(80, 80, 80)); // 사진처럼 약간 어두운 회색
+					dc.Draw3dRect(&rectTop2_1, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectTop2_1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-				dc.FillSolidRect(&rectTop2_2, RGB(80, 80, 80));
-				dc.Draw3dRect(&rectTop2_2, RGB(50, 50, 50), RGB(200, 200, 200));
-				dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					dc.FillSolidRect(&rectTop2_2, RGB(80, 80, 80));
+					dc.Draw3dRect(&rectTop2_2, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-				// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
-				int dataStartY = top2Y + nHeaderHeight + nSpacingY;
+					// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
+					dataStartY = top2Y + nHeaderHeight + nSpacingY;
+				}
 
 				int r = 0;
-				for (; r < maxPortsPerCard; ++r)
+				int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
+				for (; r < nCells; ++r)
 				{
 					int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
 					CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
@@ -478,25 +513,28 @@ void TagNamePrintDlg::OnPaint()
 					dc.Draw3dRect(&rectLabel, RGB(50, 50, 50), RGB(200, 200, 200));
 
 					// 포트(태그) 이름 출력
-					int portIndex = cardNum * maxPortsPerCard + r;
+					int portIndex = GetCardStart(cardNum) + r;
 					if (portIndex < totalPorts)
 					{
 						dc.DrawText(tagName[portIndex], &rectLabel, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 					}
 				}
 
-				// --- 4. 하단 레이블 (2칸, 반반 너비) ---
-				int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
-				CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
-				CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
+				if (!IsNameOnly())
+				{
+					// --- 4. 하단 레이블 (2칸, 반반 너비) ---
+					int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
+					CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
+					CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
 
-				dc.FillSolidRect(&rectBottom1, RGB(80, 80, 80));
-				dc.Draw3dRect(&rectBottom1, RGB(50, 50, 50), RGB(200, 200, 200));
-				dc.DrawText(headerStr, &rectBottom1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					dc.FillSolidRect(&rectBottom1, RGB(80, 80, 80));
+					dc.Draw3dRect(&rectBottom1, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectBottom1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-				dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
-				dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
-				dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
+					dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+				}
 			}
 
 			dc.SetTextColor(oldTextColor);
@@ -560,10 +598,9 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 			int nMarginY = (int)((10.0 / 25.4) * dpiY);
 
 			int maxCardsPerPage = 20; // 5번 조건: 20장마다 새로운 페이지
-			int maxPortsPerCard = 16; // 7번 조건: 카드 1장당 16개의 포트
 
 			int totalPorts = (int)tagName.size();
-			int totalCards = (totalPorts + maxPortsPerCard - 1) / maxPortsPerCard;
+			int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
 			int currentCardIndex = 0; // 현재 인쇄할 카드의 시작 인덱스
 
 			CFont font;
@@ -579,7 +616,8 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 
 				dc.SelectObject(&titleFont);
 				COLORREF oldTextColor = dc.SetTextColor(RGB(0, 0, 0));
-				CString titlePrefix = m_isOutCard ? _T("[ * OUT Card List * ]") : _T("[ * IN Card List * ]");
+				CString titlePrefix;
+				titlePrefix.Format(_T("[ * %s * ]"), (LPCTSTR)m_strListTitle);
 				CRect rectTitle(nMarginX, nMarginY, nMarginX + (int)(150.0 * dpiX / 25.4), nMarginY + (int)(8.0 * dpiY / 25.4));
 				dc.DrawText(titlePrefix, &rectTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
@@ -603,33 +641,39 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					int nHeaderHeight = (int)(nLabelHeight * 0.6); // 헤더 높이를 0.6배로 고정
 
 					CString headerStr;
-					headerStr.Format(_T("%s %d"), m_isOutCard ? _T("Out") : _T("In"), cardNum + 1);
+					headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
 
-					// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
-					// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
-					CRect rectTop1(currentX + nHalfWidth, topSectionY, currentX + nLabelWidth, topSectionY + nHeaderHeight);
-					dc.FillSolidRect(&rectTop1, RGB(120, 120, 120));
-					dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					// [추가] 신호기 / 선로전환기 모듈은 머리표 없이 이름 칸만 인쇄
+					int dataStartY = topSectionY;
+					if (!IsNameOnly())
+					{
+						// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
+						// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
+						CRect rectTop1(currentX + nHalfWidth, topSectionY, currentX + nLabelWidth, topSectionY + nHeaderHeight);
+						dc.FillSolidRect(&rectTop1, RGB(120, 120, 120));
+						dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
+						dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
-					int top2Y = topSectionY + nHeaderHeight + nSpacingY;
-					CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
-					CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
+						// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
+						int top2Y = topSectionY + nHeaderHeight + nSpacingY;
+						CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
+						CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
 
-					dc.FillSolidRect(&rectTop2_1, RGB(80, 80, 80));
-					dc.Draw3dRect(&rectTop2_1, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectTop2_1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+						dc.FillSolidRect(&rectTop2_1, RGB(80, 80, 80));
+						dc.Draw3dRect(&rectTop2_1, RGB(50, 50, 50), RGB(200, 200, 200));
+						dc.DrawText(headerStr, &rectTop2_1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					dc.FillSolidRect(&rectTop2_2, RGB(80, 80, 80));
-					dc.Draw3dRect(&rectTop2_2, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+						dc.FillSolidRect(&rectTop2_2, RGB(80, 80, 80));
+						dc.Draw3dRect(&rectTop2_2, RGB(50, 50, 50), RGB(200, 200, 200));
+						dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
-					int dataStartY = top2Y + nHeaderHeight + nSpacingY;
+						// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
+						dataStartY = top2Y + nHeaderHeight + nSpacingY;
+					}
 
 					int r = 0;
-					for (; r < maxPortsPerCard; ++r)
+					int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
+					for (; r < nCells; ++r)
 					{
 						int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
 						CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
@@ -637,25 +681,28 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 						dc.FillSolidRect(&rectLabel, RGB(0, 0, 0));
 						dc.Draw3dRect(&rectLabel, RGB(50, 50, 50), RGB(200, 200, 200));
 
-						int portIndex = cardNum * maxPortsPerCard + r;
+						int portIndex = GetCardStart(cardNum) + r;
 						if (portIndex < totalPorts)
 						{
 							dc.DrawText(tagName[portIndex], &rectLabel, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 						}
 					}
 
-					// --- 4. 하단 레이블 (2칸, 반반 너비) ---
-					int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
-					CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
-					CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
+					if (!IsNameOnly())
+					{
+						// --- 4. 하단 레이블 (2칸, 반반 너비) ---
+						int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
+						CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
+						CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
 
-					dc.FillSolidRect(&rectBottom1, RGB(80, 80, 80));
-					dc.Draw3dRect(&rectBottom1, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectBottom1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+						dc.FillSolidRect(&rectBottom1, RGB(80, 80, 80));
+						dc.Draw3dRect(&rectBottom1, RGB(50, 50, 50), RGB(200, 200, 200));
+						dc.DrawText(headerStr, &rectBottom1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
-					dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+						dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
+						dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
+						dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					}
 				}
 
 				dc.SetTextColor(oldTextColor);
@@ -763,9 +810,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrevPage()
 void TagNamePrintDlg::OnBnClickedBtnNextPage()
 {
 	int maxCardsPerPage = 20;
-	int maxPortsPerCard = 16;
-	int totalPorts = (int)tagName.size();
-	int totalCards = (totalPorts + maxPortsPerCard - 1) / maxPortsPerCard;
+	int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
 	int totalPages = (totalCards + maxCardsPerPage - 1) / maxCardsPerPage;
 
 	if (m_nCurrentPage < totalPages - 1)

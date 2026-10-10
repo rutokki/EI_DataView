@@ -110,6 +110,8 @@ public:
 	//void OnPrintTagNameLabel();
 	afx_msg void OnTagIncard();
 	afx_msg void OnTagOutcard();
+	afx_msg void OnTagSigcard();   // [추가] 신호기 카드 표찰 인쇄
+	afx_msg void OnTagSwhcard();   // [추가] 선로전환기 카드 표찰 인쇄
 	afx_msg void OnDiffTool();
 	void OnExportCSV();
 	afx_msg void OnFileSave();
