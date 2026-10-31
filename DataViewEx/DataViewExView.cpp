@@ -196,15 +196,12 @@ void CDataViewExView::OnFilePrintPreview()
 {
 	auto Data = StructMainData::GetInstance().GetEIDBStruct();
 
-	// [TEMP-DEBUG] GridPrintDlg UI 확인용으로 이 가드를 잠시 꺼둡니다. 실제 로드된 파일이
-	// 없으면 여기서 바로 막혀서 OnPrintGridTable()의 더미데이터 코드까지 도달하지 못했습니다.
-	// UI 확인 끝나면 아래 if 블록의 주석을 풀어 원래대로 되돌리세요.
-	// 2. 데이터가 비어있는지 확인 (역 정보 ID 등이 0이거나 초기화 상태인 경우)
-	//if (Data == nullptr)	 // 혹은 앞서 만든 IsEmpty() 함수 활용
-	//{
-	//	BCGPMessageBox(_T("출력할 데이터가 없습니다. 먼저 파일을 열어 데이터를 로드해주세요."), MB_ICONWARNING | MB_OK);
-	//	return; // 인쇄 로직으로 진입하지 않고 안전하게 차단
-	//}
+	// 데이터가 로드되지 않았으면 인쇄 차단 (합동 시험표는 EIDBStruct 를 바로 참조하므로 필수)
+	if (Data == nullptr)
+	{
+		BCGPMessageBox(_T("출력할 데이터가 없습니다. 먼저 파일을 열어 데이터를 로드해주세요."), MB_ICONWARNING | MB_OK);
+		return; // 인쇄 로직으로 진입하지 않고 안전하게 차단
+	}
 
 	OnPrintGridTable();
 }
@@ -1057,33 +1054,12 @@ void CDataViewExView::OnPrintGridTable()
 	// 7. 지역 변수 rows 대신 다이얼로그 내부 멤버(pDlg->m_rows)에 직접 데이터 추출
 	if (!ExtractGridData(pGrid, headers, pDlg->m_rows))
 	{
-		// [TEMP-DEBUG] 실제 DB 데이터가 없어도 GridPrintDlg UI(버튼 배치/폰트 등)를 확인할 수 있게
-		// 더미 데이터를 채워서 계속 진행합니다. UI 확인이 끝나면 이 블록을 지우고 원래대로
-		// (AfxMessageBox + return) 되돌리세요.
-		FillDummyRowsForPrintPreview(pDlg->m_columnInfos, pDlg->m_rows);
+		AfxMessageBox(_T("인쇄할 데이터가 없습니다."));
+		return;
 	}
 
 	// 8. 모달 다이얼로그 실행
 	pDlg->DoModal();
-}
-// [TEMP-DEBUG] GridPrintDlg UI 확인용 더미 데이터 생성 함수. 확인 끝나면 OnPrintGridTable의
-// 호출부와 함께 이 함수도 삭제하세요.
-void CDataViewExView::FillDummyRowsForPrintPreview(const std::vector<ColumnInfo>& columnInfos, std::vector<std::vector<CString>>& rows)
-{
-	rows.clear();
-	const int nDummyRowCount = 12;
-	for (int r = 0; r < nDummyRowCount; ++r)
-	{
-		std::vector<CString> row;
-		row.reserve(columnInfos.size());
-		for (size_t c = 0; c < columnInfos.size(); ++c)
-		{
-			CString cell;
-			cell.Format(_T("샘플%d-%d"), r + 1, (int)c + 1);
-			row.push_back(cell);
-		}
-		rows.push_back(row);
-	}
 }
 bool CDataViewExView::ExtractGridData(CBCGPGridCtrl* pGrid, const std::vector<CString>& headers, std::vector<std::vector<CString>>& rows)
 {
@@ -1151,9 +1127,21 @@ bool CDataViewExView::ExtractGridData(CBCGPGridCtrl* pGrid, const std::vector<CS
 			continue;
 		}
 
-		if (firstColStr.IsEmpty())
+		// [수정] 1번 컬럼이 비어있어도 다른 컬럼에 데이터가 있으면 인쇄 (예: 연동 도표 "역 정보" 행)
+		//        모든 컬럼이 비어있는 행(카드 구분용 빈 줄)만 제외
+		bool bAllEmpty = true;
+		for (int c = 0; c < nItemCount && bAllEmpty; ++c)
 		{
-			OutputDebugString(_T("  -> [스킵] 1번 컬럼(명칭)이 비어있음\n"));
+			CBCGPGridItem* pItem = pRow->GetItem(c);
+			if (pItem == nullptr) continue;
+			_variant_t var = pItem->GetValue();
+			if (var.vt == VT_EMPTY || var.vt == VT_NULL) continue;
+			CString strCell = (LPCTSTR)(_bstr_t)var;
+			if (!strCell.IsEmpty()) bAllEmpty = false;
+		}
+		if (bAllEmpty)
+		{
+			OutputDebugString(_T("  -> [스킵] 모든 컬럼이 비어있음 (구분용 빈 줄)\n"));
 			continue;
 		}
 
