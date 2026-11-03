@@ -98,6 +98,18 @@ public:
 	int GetCardStart(int nCard) const;
 	int GetCardCells(int nCard) const;
 
+	// [추가] 페이지당 카드 수 계산 (미리보기 / 인쇄 / 페이지 이동 공통)
+	static constexpr double TAG_USABLE_WIDTH_MM = 265.0;  // A4 가로 297mm - 좌우 여백
+	static constexpr double TAG_USABLE_HEIGHT_MM = 175.0; // A4 세로 210mm - 제목 / 상하 여백
+	static constexpr double TAG_COL_GAP_MM = 0.5;         // 카드 사이 가로 간격
+	static constexpr double TAG_ROW_GAP_MM = 3.0;         // 카드 줄 사이 세로 간격
+	static constexpr int TAG_MAX_CARDS_PER_PAGE = 20;     // 페이지당 최대 카드 수 (기존 조건)
+	double GetCardHeightMm() const;
+	int GetCardsPerRow() const;
+	int GetRowsPerPage() const;
+	int GetCardsPerPage() const;
+	int GetTotalPages() const;
+
 	afx_msg void OnBnClickedCellChangeButton();
 
 	// [추가] 표찰 크기 / 위치 조절 UI (현장에서 조절 후 인쇄, 값은 레지스트리에 저장)

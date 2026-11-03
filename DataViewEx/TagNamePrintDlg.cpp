@@ -367,6 +367,51 @@ int TagNamePrintDlg::GetCardCells(int nCard) const
 	return (pLayout != nullptr) ? pLayout->nCells : 0;
 }
 
+// [추가] 페이지당 카드 수 계산 (미리보기 / 인쇄 / 페이지 이동 공통)
+//  A4 가로(297 x 210mm) 에서 여백을 뺀 영역(TAG_USABLE_WIDTH_MM x TAG_USABLE_HEIGHT_MM)에
+//  칸 가로(+0.5mm 간격) 기준으로 한 줄 장수, 카드 높이(+줄 간격) 기준으로 줄 수를 정함
+//  페이지당 최대 TAG_MAX_CARDS_PER_PAGE(20)장
+double TagNamePrintDlg::GetCardHeightMm() const
+{
+	if (IsNameOnly())
+	{
+		// 모듈 표찰 : 띠 길이 (종류가 섞여 있으면 가장 긴 띠 기준)
+		double dMax = 0.0;
+		for (const auto& layout : m_kindLayouts) dMax = (std::max)(dMax, layout.stripLenMm);
+		return dMax;
+	}
+	// IN/OUT : 머리표 3개(칸 세로 x 0.6) + 머리표 아래 간격 2개 + 포트 칸(칸 세로 + 세로 간격)
+	double dHeader = m_cellHeightMm * 0.6;
+	return dHeader * 3 + m_cellSpacingYMm * 2 + m_nPortsPerCard * (m_cellHeightMm + m_cellSpacingYMm);
+}
+
+int TagNamePrintDlg::GetCardsPerRow() const
+{
+	int nCount = (int)((TAG_USABLE_WIDTH_MM + TAG_COL_GAP_MM) / (m_cellWidthMm + TAG_COL_GAP_MM));
+	return (std::max)(1, nCount);
+}
+
+int TagNamePrintDlg::GetRowsPerPage() const
+{
+	double dCardHeight = GetCardHeightMm();
+	if (dCardHeight <= 0.0) return 1;
+	int nCount = (int)((TAG_USABLE_HEIGHT_MM + TAG_ROW_GAP_MM) / (dCardHeight + TAG_ROW_GAP_MM));
+	return (std::max)(1, nCount);
+}
+
+int TagNamePrintDlg::GetCardsPerPage() const
+{
+	// 기존 조건(20장마다 새 페이지)은 상한으로 유지, 칸이 넓어 한 줄에 다 안 들어가면 다음 줄로
+	return (std::min)(TAG_MAX_CARDS_PER_PAGE, GetCardsPerRow() * GetRowsPerPage());
+}
+
+int TagNamePrintDlg::GetTotalPages() const
+{
+	int nPerPage = GetCardsPerPage();
+	int nPages = (GetCardCount() + nPerPage - 1) / nPerPage;
+	return (std::max)(1, nPages);
+}
+
 void TagNamePrintDlg::OnPaint()
 {
 	CPaintDC dc(this);
@@ -411,13 +456,16 @@ void TagNamePrintDlg::OnPaint()
 
 		if (!tagName.empty())
 		{
-			// 중복 선언 방지를 위해 상단에서 카드 및 포트 규격 통합 선언
-			int maxCardsPerPage = 20; // 5번 조건: 20장마다 새로운 페이지
+			// [수정] 페이지당 카드 수 : 최대 20장, 칸 가로 / 카드 높이로 A4 에 들어가는 만큼만
+			int maxCardsPerPage = GetCardsPerPage();
+			int nCardsPerRow = GetCardsPerRow();
 
 			int totalPorts = (int)tagName.size();
 			int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
-			int totalPages = (totalCards + maxCardsPerPage - 1) / maxCardsPerPage;
-			if (totalPages == 0) totalPages = 1;
+			int totalPages = GetTotalPages();
+			// 설정 변경으로 페이지 수가 줄어든 경우 현재 페이지 보정
+			if (m_nCurrentPage >= totalPages) m_nCurrentPage = totalPages - 1;
+			if (m_nCurrentPage < 0) m_nCurrentPage = 0;
 
 			CFont titleFont;
 			titleFont.CreatePointFont(65, _T("맑은 고딕"));
@@ -463,11 +511,14 @@ void TagNamePrintDlg::OnPaint()
 			// 미리보기 화면 페이징 적용 (현재 페이지에 해당하는 카드 인덱스 도출)
 			int startCardIndex = m_nCurrentPage * maxCardsPerPage;
 			int cardsToDraw = min(maxCardsPerPage, totalCards - startCardIndex);
+			int nRowPitch = (int)((GetCardHeightMm() + TAG_ROW_GAP_MM) * scaleY); // 카드 줄 간격
 
 			for (int c = 0; c < cardsToDraw; ++c)
 			{
 				int cardNum = startCardIndex + c; // 실제 데이터 인덱스 번호
-				int currentX = contentLeft + c * (nLabelWidth + nSpacingX); // 화면에 그려지는 X좌표 위치
+				// [수정] 한 줄에 nCardsPerRow 장, 넘치면 아래 줄로
+				int currentX = contentLeft + (c % nCardsPerRow) * (nLabelWidth + nSpacingX); // 화면에 그려지는 X좌표 위치
+				int cardTopY = topSectionY + (c / nCardsPerRow) * nRowPitch;
 
 				// 높이 및 너비 계산
 				int nHalfWidth = nLabelWidth / 2;
@@ -477,18 +528,18 @@ void TagNamePrintDlg::OnPaint()
 				headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
 
 				// [추가] 신호기 / 선로전환기 모듈은 머리표 없이 이름 칸만 인쇄
-				int dataStartY = topSectionY;
+				int dataStartY = cardTopY;
 				if (!IsNameOnly())
 				{
 					// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
 					// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
-					CRect rectTop1(currentX + nHalfWidth, topSectionY, currentX + nLabelWidth, topSectionY + nHeaderHeight);
+					CRect rectTop1(currentX + nHalfWidth, cardTopY, currentX + nLabelWidth, cardTopY + nHeaderHeight);
 					dc.FillSolidRect(&rectTop1, RGB(120, 120, 120)); // 사진처럼 약간 밝은 회색
 					dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
 					dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 					// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
-					int top2Y = topSectionY + nHeaderHeight + nSpacingY;
+					int top2Y = cardTopY + nHeaderHeight + nSpacingY;
 					CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
 					CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
 
@@ -610,7 +661,10 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 			int nMarginX = (int)((10.0 / 25.4) * dpiX);
 			int nMarginY = (int)((10.0 / 25.4) * dpiY);
 
-			int maxCardsPerPage = 20; // 5번 조건: 20장마다 새로운 페이지
+			// [수정] 페이지당 카드 수 : 미리보기와 동일한 계산 사용
+			int maxCardsPerPage = GetCardsPerPage();
+			int nCardsPerRow = GetCardsPerRow();
+			int nRowPitch = (int)(((GetCardHeightMm() + TAG_ROW_GAP_MM) / 25.4) * dpiY); // 카드 줄 간격
 
 			int totalPorts = (int)tagName.size();
 			int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
@@ -645,7 +699,9 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 				for (int c = 0; c < cardsInThisPage; ++c)
 				{
 					int cardNum = currentCardIndex + c;
-					int currentX = nMarginX + c * (nLabelWidth + nSpacingX);
+					// [수정] 한 줄에 nCardsPerRow 장, 넘치면 아래 줄로
+					int currentX = nMarginX + (c % nCardsPerRow) * (nLabelWidth + nSpacingX);
+					int cardTopY = topSectionY + (c / nCardsPerRow) * nRowPitch;
 
 					dc.SetTextColor(RGB(255, 255, 255));
 
@@ -657,18 +713,18 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
 
 					// [추가] 신호기 / 선로전환기 모듈은 머리표 없이 이름 칸만 인쇄
-					int dataStartY = topSectionY;
+					int dataStartY = cardTopY;
 					if (!IsNameOnly())
 					{
 						// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
 						// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
-						CRect rectTop1(currentX + nHalfWidth, topSectionY, currentX + nLabelWidth, topSectionY + nHeaderHeight);
+						CRect rectTop1(currentX + nHalfWidth, cardTopY, currentX + nLabelWidth, cardTopY + nHeaderHeight);
 						dc.FillSolidRect(&rectTop1, RGB(120, 120, 120));
 						dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
 						dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 						// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
-						int top2Y = topSectionY + nHeaderHeight + nSpacingY;
+						int top2Y = cardTopY + nHeaderHeight + nSpacingY;
 						CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
 						CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
 
@@ -1035,9 +1091,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrevPage()
 
 void TagNamePrintDlg::OnBnClickedBtnNextPage()
 {
-	int maxCardsPerPage = 20;
-	int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
-	int totalPages = (totalCards + maxCardsPerPage - 1) / maxCardsPerPage;
+	int totalPages = GetTotalPages(); // [수정] 미리보기 / 인쇄와 동일한 페이지 계산
 
 	if (m_nCurrentPage < totalPages - 1)
 	{
