@@ -343,28 +343,60 @@ END_MESSAGE_MAP()
 //}
 // [추가] 카드(모듈) 수 / 시작 위치 / 이름 칸 수
 //  - IN/OUT 카드 : 카드당 m_nPortsPerCard 칸 고정
-//  - 신호기 / 선로전환기 모듈 : 모듈 종류(m_kindLayouts)별 이름 칸 수
+//  - 신호기 / 선로전환기 모듈 : 모듈당 m_nPortsPerCard(MAX_SIG_MODULE_PORT / MAX_SWH_MODULE_PORT) 칸 고정
 int TagNamePrintDlg::GetCardCount() const
 {
-	if (IsNameOnly()) return (int)m_moduleKinds.size();
 	int totalPorts = (int)tagName.size();
 	return (totalPorts + m_nPortsPerCard - 1) / m_nPortsPerCard;
 }
 
 int TagNamePrintDlg::GetCardStart(int nCard) const
 {
-	if (!IsNameOnly()) return nCard * m_nPortsPerCard;
-	int nStart = 0;
-	for (int i = 0; i < nCard; ++i)
-		nStart += GetCardCells(i);
-	return nStart;
+	return nCard * m_nPortsPerCard;
 }
 
 int TagNamePrintDlg::GetCardCells(int nCard) const
 {
-	if (!IsNameOnly()) return m_nPortsPerCard;
-	const auto* pLayout = GetModuleLayout(nCard);
-	return (pLayout != nullptr) ? pLayout->nCells : 0;
+	return m_nPortsPerCard;
+}
+
+// [추가] 페이지당 카드 수 계산 (미리보기 / 인쇄 / 페이지 이동 공통)
+//  A4 가로(297 x 210mm) 에서 여백을 뺀 영역(TAG_USABLE_WIDTH_MM x TAG_USABLE_HEIGHT_MM)에
+//  한 줄 16장(서브랙 슬롯 수) x 위아래 2줄 = 페이지당 32장
+//  칸 크기를 키워 A4 를 넘으면 칸 가로 / 카드 높이 기준으로 들어가는 만큼만
+double TagNamePrintDlg::GetCardHeightMm() const
+{
+	// 머리표 3개(칸 세로 x 0.6) + 머리표 아래 간격 2개 + 포트 칸(칸 세로 + 세로 간격)
+	double dHeader = m_cellHeightMm * 0.6;
+	return dHeader * 3 + m_cellSpacingYMm * 2 + m_nPortsPerCard * (m_cellHeightMm + m_cellSpacingYMm);
+}
+
+int TagNamePrintDlg::GetCardsPerRow() const
+{
+	// 한 줄 최대 TAG_CARDS_PER_ROW(16)장, 칸이 넓어 A4 폭을 넘으면 들어가는 만큼만
+	int nCount = (int)((TAG_USABLE_WIDTH_MM + TAG_COL_GAP_MM) / (m_cellWidthMm + TAG_COL_GAP_MM));
+	return (std::max)(1, (std::min)(TAG_CARDS_PER_ROW, nCount));
+}
+
+int TagNamePrintDlg::GetRowsPerPage() const
+{
+	double dCardHeight = GetCardHeightMm();
+	if (dCardHeight <= 0.0) return 1;
+	// 위아래 최대 TAG_ROWS_PER_PAGE(2)줄, 카드가 길어 A4 높이를 넘으면 들어가는 만큼만
+	int nCount = (int)((TAG_USABLE_HEIGHT_MM + TAG_ROW_GAP_MM) / (dCardHeight + TAG_ROW_GAP_MM));
+	return (std::max)(1, (std::min)(TAG_ROWS_PER_PAGE, nCount));
+}
+
+int TagNamePrintDlg::GetCardsPerPage() const
+{
+	return GetCardsPerRow() * GetRowsPerPage();
+}
+
+int TagNamePrintDlg::GetTotalPages() const
+{
+	int nPerPage = GetCardsPerPage();
+	int nPages = (GetCardCount() + nPerPage - 1) / nPerPage;
+	return (std::max)(1, nPages);
 }
 
 void TagNamePrintDlg::OnPaint()
@@ -411,13 +443,16 @@ void TagNamePrintDlg::OnPaint()
 
 		if (!tagName.empty())
 		{
-			// 중복 선언 방지를 위해 상단에서 카드 및 포트 규격 통합 선언
-			int maxCardsPerPage = 20; // 5번 조건: 20장마다 새로운 페이지
+			// [수정] 페이지당 카드 수 : 한 줄 16장 x 위아래 2줄 (A4 에 들어가는 만큼)
+			int maxCardsPerPage = GetCardsPerPage();
+			int nCardsPerRow = GetCardsPerRow();
 
 			int totalPorts = (int)tagName.size();
 			int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
-			int totalPages = (totalCards + maxCardsPerPage - 1) / maxCardsPerPage;
-			if (totalPages == 0) totalPages = 1;
+			int totalPages = GetTotalPages();
+			// 설정 변경으로 페이지 수가 줄어든 경우 현재 페이지 보정
+			if (m_nCurrentPage >= totalPages) m_nCurrentPage = totalPages - 1;
+			if (m_nCurrentPage < 0) m_nCurrentPage = 0;
 
 			CFont titleFont;
 			titleFont.CreatePointFont(65, _T("맑은 고딕"));
@@ -463,11 +498,14 @@ void TagNamePrintDlg::OnPaint()
 			// 미리보기 화면 페이징 적용 (현재 페이지에 해당하는 카드 인덱스 도출)
 			int startCardIndex = m_nCurrentPage * maxCardsPerPage;
 			int cardsToDraw = min(maxCardsPerPage, totalCards - startCardIndex);
+			int nRowPitch = (int)((GetCardHeightMm() + TAG_ROW_GAP_MM) * scaleY); // 카드 줄 간격
 
 			for (int c = 0; c < cardsToDraw; ++c)
 			{
 				int cardNum = startCardIndex + c; // 실제 데이터 인덱스 번호
-				int currentX = contentLeft + c * (nLabelWidth + nSpacingX); // 화면에 그려지는 X좌표 위치
+				// [수정] 한 줄에 nCardsPerRow 장, 넘치면 아래 줄로
+				int currentX = contentLeft + (c % nCardsPerRow) * (nLabelWidth + nSpacingX); // 화면에 그려지는 X좌표 위치
+				int cardTopY = topSectionY + (c / nCardsPerRow) * nRowPitch;
 
 				// 높이 및 너비 계산
 				int nHalfWidth = nLabelWidth / 2;
@@ -476,50 +514,34 @@ void TagNamePrintDlg::OnPaint()
 				CString headerStr;
 				headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
 
-				// [추가] 신호기 / 선로전환기 모듈은 머리표 없이 이름 칸만 인쇄
-				int dataStartY = topSectionY;
-				if (!IsNameOnly())
-				{
-					// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
-					// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
-					CRect rectTop1(currentX + nHalfWidth, topSectionY, currentX + nLabelWidth, topSectionY + nHeaderHeight);
-					dc.FillSolidRect(&rectTop1, RGB(120, 120, 120)); // 사진처럼 약간 밝은 회색
-					dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+				// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
+				// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
+				CRect rectTop1(currentX + nHalfWidth, cardTopY, currentX + nLabelWidth, cardTopY + nHeaderHeight);
+				dc.FillSolidRect(&rectTop1, RGB(120, 120, 120)); // 사진처럼 약간 밝은 회색
+				dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
+				dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
-					int top2Y = topSectionY + nHeaderHeight + nSpacingY;
-					CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
-					CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
+				// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
+				int top2Y = cardTopY + nHeaderHeight + nSpacingY;
+				CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
+				CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
 
-					dc.FillSolidRect(&rectTop2_1, RGB(80, 80, 80)); // 사진처럼 약간 어두운 회색
-					dc.Draw3dRect(&rectTop2_1, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectTop2_1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+				dc.FillSolidRect(&rectTop2_1, RGB(80, 80, 80)); // 사진처럼 약간 어두운 회색
+				dc.Draw3dRect(&rectTop2_1, RGB(50, 50, 50), RGB(200, 200, 200));
+				dc.DrawText(headerStr, &rectTop2_1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					dc.FillSolidRect(&rectTop2_2, RGB(80, 80, 80));
-					dc.Draw3dRect(&rectTop2_2, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+				dc.FillSolidRect(&rectTop2_2, RGB(80, 80, 80));
+				dc.Draw3dRect(&rectTop2_2, RGB(50, 50, 50), RGB(200, 200, 200));
+				dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
-					dataStartY = top2Y + nHeaderHeight + nSpacingY;
-				}
-
-				// [추가] 모듈 표찰 : 표찰 띠(자르는 선) 테두리 출력
-				if (IsNameOnly())
-				{
-					CRect rectStrip(currentX, dataStartY, currentX + nLabelWidth, dataStartY + (int)(GetStripLenMm(cardNum) * scaleY));
-					dc.FillSolidRect(&rectStrip, RGB(255, 255, 255));
-					dc.Draw3dRect(&rectStrip, RGB(0, 0, 0), RGB(0, 0, 0));
-				}
+				// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
+				int dataStartY = top2Y + nHeaderHeight + nSpacingY;
 
 				int r = 0;
 				int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 				for (; r < nCells; ++r)
 				{
-					// [수정] 모듈 표찰은 전면판 명칭 옆 위치(첫 칸 위치 + 칸 간격)에 맞춰 출력
-					int currentY = IsNameOnly()
-						? dataStartY + (int)(GetLabelOffsetMm(cardNum, r) * scaleY)
-						: dataStartY + r * (nLabelHeight + nSpacingY);
+					int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
 					CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
 
 					dc.FillSolidRect(&rectLabel, RGB(0, 0, 0)); // 데이터는 기존처럼 검은색
@@ -533,21 +555,18 @@ void TagNamePrintDlg::OnPaint()
 					}
 				}
 
-				if (!IsNameOnly())
-				{
-					// --- 4. 하단 레이블 (2칸, 반반 너비) ---
-					int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
-					CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
-					CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
+				// --- 4. 하단 레이블 (2칸, 반반 너비) ---
+				int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
+				CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
+				CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
 
-					dc.FillSolidRect(&rectBottom1, RGB(80, 80, 80));
-					dc.Draw3dRect(&rectBottom1, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectBottom1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+				dc.FillSolidRect(&rectBottom1, RGB(80, 80, 80));
+				dc.Draw3dRect(&rectBottom1, RGB(50, 50, 50), RGB(200, 200, 200));
+				dc.DrawText(headerStr, &rectBottom1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
-					dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
-					dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-				}
+				dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
+				dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
+				dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 			}
 
 			dc.SetTextColor(oldTextColor);
@@ -610,7 +629,10 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 			int nMarginX = (int)((10.0 / 25.4) * dpiX);
 			int nMarginY = (int)((10.0 / 25.4) * dpiY);
 
-			int maxCardsPerPage = 20; // 5번 조건: 20장마다 새로운 페이지
+			// [수정] 페이지당 카드 수 : 미리보기와 동일한 계산 사용
+			int maxCardsPerPage = GetCardsPerPage();
+			int nCardsPerRow = GetCardsPerRow();
+			int nRowPitch = (int)(((GetCardHeightMm() + TAG_ROW_GAP_MM) / 25.4) * dpiY); // 카드 줄 간격
 
 			int totalPorts = (int)tagName.size();
 			int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
@@ -645,7 +667,9 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 				for (int c = 0; c < cardsInThisPage; ++c)
 				{
 					int cardNum = currentCardIndex + c;
-					int currentX = nMarginX + c * (nLabelWidth + nSpacingX);
+					// [수정] 한 줄에 nCardsPerRow 장, 넘치면 아래 줄로
+					int currentX = nMarginX + (c % nCardsPerRow) * (nLabelWidth + nSpacingX);
+					int cardTopY = topSectionY + (c / nCardsPerRow) * nRowPitch;
 
 					dc.SetTextColor(RGB(255, 255, 255));
 
@@ -656,50 +680,34 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					CString headerStr;
 					headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
 
-					// [추가] 신호기 / 선로전환기 모듈은 머리표 없이 이름 칸만 인쇄
-					int dataStartY = topSectionY;
-					if (!IsNameOnly())
-					{
-						// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
-						// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
-						CRect rectTop1(currentX + nHalfWidth, topSectionY, currentX + nLabelWidth, topSectionY + nHeaderHeight);
-						dc.FillSolidRect(&rectTop1, RGB(120, 120, 120));
-						dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
-						dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					// --- [수정됨] 1. 최상단 행 (가로 절반, 오른쪽 배치) ---
+					// 시작 X좌표를 currentX + nHalfWidth 로 변경하여 오른쪽에만 그려지게 함
+					CRect rectTop1(currentX + nHalfWidth, cardTopY, currentX + nLabelWidth, cardTopY + nHeaderHeight);
+					dc.FillSolidRect(&rectTop1, RGB(120, 120, 120));
+					dc.Draw3dRect(&rectTop1, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-						// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
-						int top2Y = topSectionY + nHeaderHeight + nSpacingY;
-						CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
-						CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
+					// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
+					int top2Y = cardTopY + nHeaderHeight + nSpacingY;
+					CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
+					CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
 
-						dc.FillSolidRect(&rectTop2_1, RGB(80, 80, 80));
-						dc.Draw3dRect(&rectTop2_1, RGB(50, 50, 50), RGB(200, 200, 200));
-						dc.DrawText(headerStr, &rectTop2_1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					dc.FillSolidRect(&rectTop2_1, RGB(80, 80, 80));
+					dc.Draw3dRect(&rectTop2_1, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectTop2_1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-						dc.FillSolidRect(&rectTop2_2, RGB(80, 80, 80));
-						dc.Draw3dRect(&rectTop2_2, RGB(50, 50, 50), RGB(200, 200, 200));
-						dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					dc.FillSolidRect(&rectTop2_2, RGB(80, 80, 80));
+					dc.Draw3dRect(&rectTop2_2, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-						// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
-						dataStartY = top2Y + nHeaderHeight + nSpacingY;
-					}
-
-					// [추가] 모듈 표찰 : 표찰 띠(자르는 선) 테두리 출력
-					if (IsNameOnly())
-					{
-						CRect rectStrip(currentX, dataStartY, currentX + nLabelWidth, dataStartY + (int)(GetStripLenMm(cardNum) / 25.4 * dpiY));
-						dc.FillSolidRect(&rectStrip, RGB(255, 255, 255));
-						dc.Draw3dRect(&rectStrip, RGB(0, 0, 0), RGB(0, 0, 0));
-					}
+					// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
+					int dataStartY = top2Y + nHeaderHeight + nSpacingY;
 
 					int r = 0;
 					int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 					for (; r < nCells; ++r)
 					{
-						// [수정] 모듈 표찰은 전면판 명칭 옆 위치(첫 칸 위치 + 칸 간격)에 맞춰 출력
-						int currentY = IsNameOnly()
-							? dataStartY + (int)(GetLabelOffsetMm(cardNum, r) / 25.4 * dpiY)
-							: dataStartY + r * (nLabelHeight + nSpacingY);
+						int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
 						CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
 
 						dc.FillSolidRect(&rectLabel, RGB(0, 0, 0));
@@ -712,21 +720,18 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 						}
 					}
 
-					if (!IsNameOnly())
-					{
-						// --- 4. 하단 레이블 (2칸, 반반 너비) ---
-						int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
-						CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
-						CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
+					// --- 4. 하단 레이블 (2칸, 반반 너비) ---
+					int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
+					CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
+					CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
 
-						dc.FillSolidRect(&rectBottom1, RGB(80, 80, 80));
-						dc.Draw3dRect(&rectBottom1, RGB(50, 50, 50), RGB(200, 200, 200));
-						dc.DrawText(headerStr, &rectBottom1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					dc.FillSolidRect(&rectBottom1, RGB(80, 80, 80));
+					dc.Draw3dRect(&rectBottom1, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectBottom1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-						dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
-						dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
-						dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-					}
+					dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
+					dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
+					dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 				}
 
 				dc.SetTextColor(oldTextColor);
@@ -810,22 +815,6 @@ void TagNamePrintDlg::OnBnClickedCellChangeButton()
 	m_cellHeightMm = (std::min)((std::max)(m_cellHeightMm, 1.0), 8.0);
 	m_cellSpacingYMm = (std::min)((std::max)(m_cellSpacingYMm, 0.0), 3.0);
 
-	// [추가] 모듈 종류별 띠 길이 / 첫 칸 위치 / 칸 간격 (띠 길이 10 ~ 180mm, 위치·간격은 띠 길이 이내)
-	for (size_t i = 0; i < m_kindRows.size() && i < m_kindLayouts.size(); ++i)
-	{
-		auto& layout = m_kindLayouts[i];
-		double* pValues[3] = { &layout.stripLenMm, &layout.topMm, &layout.pitchMm };
-		for (int k = 0; k < 3; ++k)
-		{
-			if (m_kindRows[i].pEdit[k] == nullptr) continue;
-			m_kindRows[i].pEdit[k]->GetWindowText(str);
-			if (!str.IsEmpty()) *pValues[k] = _tstof(str);
-		}
-		layout.stripLenMm = (std::min)((std::max)(layout.stripLenMm, 10.0), 180.0);
-		layout.topMm = (std::min)((std::max)(layout.topMm, 0.0), layout.stripLenMm);
-		layout.pitchMm = (std::min)((std::max)(layout.pitchMm, 0.0), layout.stripLenMm);
-	}
-
 	SaveSettings();
 	UpdateSettingEdits();
 
@@ -870,14 +859,6 @@ void TagNamePrintDlg::LoadSettings()
 	m_cellWidthMm = ReadProfileMm(GetProfileKey(_T("Width")), m_cellWidthMm);
 	m_cellHeightMm = ReadProfileMm(GetProfileKey(_T("Height")), m_cellHeightMm);
 	m_cellSpacingYMm = ReadProfileMm(GetProfileKey(_T("SpacingY")), m_cellSpacingYMm);
-
-	// 모듈 종류별 배치는 종류 키(Kind3 등)로 저장 -> 신호기 / 선로전환기 목록에서 공유
-	for (auto& layout : m_kindLayouts)
-	{
-		layout.stripLenMm = ReadProfileMm(layout.key + _T("_StripLen"), layout.stripLenMm);
-		layout.topMm = ReadProfileMm(layout.key + _T("_Top"), layout.topMm);
-		layout.pitchMm = ReadProfileMm(layout.key + _T("_Pitch"), layout.pitchMm);
-	}
 }
 
 void TagNamePrintDlg::SaveSettings()
@@ -885,18 +866,10 @@ void TagNamePrintDlg::SaveSettings()
 	WriteProfileMm(GetProfileKey(_T("Width")), m_cellWidthMm);
 	WriteProfileMm(GetProfileKey(_T("Height")), m_cellHeightMm);
 	WriteProfileMm(GetProfileKey(_T("SpacingY")), m_cellSpacingYMm);
-
-	for (const auto& layout : m_kindLayouts)
-	{
-		WriteProfileMm(layout.key + _T("_StripLen"), layout.stripLenMm);
-		WriteProfileMm(layout.key + _T("_Top"), layout.topMm);
-		WriteProfileMm(layout.key + _T("_Pitch"), layout.pitchMm);
-	}
 }
 
 // [추가] 미리보기 아래쪽(왼쪽)에 설정 입력란 배치
-//  1행 : 칸 가로 / 칸 세로 / 세로 간격(IN/OUT 만) + [적용]
-//  모듈 표찰이면 그 위에 종류별 1행씩 : 띠 길이 / 첫 칸 위치 / 칸 간격
+//  칸 가로 / 칸 세로 / 세로 간격 + [적용]
 void TagNamePrintDlg::LayoutSettingControls()
 {
 	CWnd* pPreview = GetDlgItem(IDC_STATIC_PREVIEW);
@@ -911,7 +884,6 @@ void TagNamePrintDlg::LayoutSettingControls()
 
 	CFont* pFont = GetFont();
 	const int rowHeight = 24;
-	const int rowGap = 6;
 	const int editWidth = 55;
 	const int labelGap = 6;
 	const int groupGap = 18;
@@ -939,7 +911,7 @@ void TagNamePrintDlg::LayoutSettingControls()
 	struct { LPCTSTR text; CWnd* pEdit; bool bShow; } sizeItems[] = {
 		{ _T("칸 가로(mm)"), pEditW, true },
 		{ _T("칸 세로(mm)"), pEditH, true },
-		{ _T("세로 간격(mm)"), pEditS, !IsNameOnly() }, // 모듈 표찰은 칸 간격을 종류별로 따로 설정
+		{ _T("세로 간격(mm)"), pEditS, true },
 	};
 	for (auto& item : sizeItems)
 	{
@@ -958,44 +930,15 @@ void TagNamePrintDlg::LayoutSettingControls()
 	pApplyBtn->MoveWindow(x, nRowY, 70, rowHeight);
 	pApplyBtn->ShowWindow(SW_SHOW);
 
-	// --- 모듈 종류별 행 (1행 위로 쌓음) ---
-	m_kindRows.clear();
-	m_kindRows.resize(IsNameOnly() ? m_kindLayouts.size() : 0);
-	int nTopY = nRowY;
-	for (size_t i = 0; i < m_kindRows.size(); ++i)
-	{
-		auto& row = m_kindRows[i];
-		int y = nRowY - (int)(m_kindRows.size() - i) * (rowHeight + rowGap);
-		nTopY = (std::min)(nTopY, y);
-		x = 20;
-
-		CString strTitle;
-		strTitle.Format(_T("[%s]"), (LPCTSTR)m_kindLayouts[i].name);
-		row.pTitle = std::make_unique<CStatic>();
-		row.pTitle->Create(strTitle, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE, CRect(x, y, x + 110, y + rowHeight), this);
-		row.pTitle->SetFont(pFont);
-		x += 110 + labelGap;
-
-		LPCTSTR texts[3] = { _T("띠 길이(mm)"), _T("첫 칸 위치(mm)"), _T("칸 간격(mm)") };
-		for (int k = 0; k < 3; ++k)
-		{
-			addLabel(row.pLabel[k], texts[k], x, y);
-			row.pEdit[k] = std::make_unique<CEdit>();
-			row.pEdit[k]->CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""), WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
-				CRect(x, y, x + editWidth, y + rowHeight), this, 0);
-			row.pEdit[k]->SetFont(pFont);
-			x += editWidth + groupGap;
-		}
-	}
 	dc.SelectObject(pOldFont);
 
 	// 미리보기 영역이 설정 행과 겹치지 않도록 높이 조정
 	CRect rectPreview;
 	pPreview->GetWindowRect(&rectPreview);
 	ScreenToClient(&rectPreview);
-	if (rectPreview.bottom > nTopY - 10)
+	if (rectPreview.bottom > nRowY - 10)
 	{
-		rectPreview.bottom = nTopY - 10;
+		rectPreview.bottom = nRowY - 10;
 		pPreview->MoveWindow(&rectPreview);
 	}
 }
@@ -1010,17 +953,6 @@ void TagNamePrintDlg::UpdateSettingEdits()
 	str.Format(_T("%.1f"), m_cellSpacingYMm);
 	SetDlgItemText(IDC_EDIT_S, str);
 
-	for (size_t i = 0; i < m_kindRows.size() && i < m_kindLayouts.size(); ++i)
-	{
-		const auto& layout = m_kindLayouts[i];
-		double values[3] = { layout.stripLenMm, layout.topMm, layout.pitchMm };
-		for (int k = 0; k < 3; ++k)
-		{
-			if (m_kindRows[i].pEdit[k] == nullptr) continue;
-			str.Format(_T("%.1f"), values[k]);
-			m_kindRows[i].pEdit[k]->SetWindowText(str);
-		}
-	}
 }
 
 void TagNamePrintDlg::OnBnClickedBtnPrevPage()
@@ -1035,9 +967,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrevPage()
 
 void TagNamePrintDlg::OnBnClickedBtnNextPage()
 {
-	int maxCardsPerPage = 20;
-	int totalCards = GetCardCount(); // [수정] 카드(모듈) 수
-	int totalPages = (totalCards + maxCardsPerPage - 1) / maxCardsPerPage;
+	int totalPages = GetTotalPages(); // [수정] 미리보기 / 인쇄와 동일한 페이지 계산
 
 	if (m_nCurrentPage < totalPages - 1)
 	{
