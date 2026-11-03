@@ -342,10 +342,10 @@ END_MESSAGE_MAP()
 //}
 // [추가] 카드(모듈) 수 / 시작 위치 / 이름 칸 수
 //  - IN/OUT 카드 : 카드당 m_nPortsPerCard 칸 고정
-//  - 신호기 / 선로전환기 모듈 : m_cardCellCounts 의 모듈별 칸 수
+//  - 신호기 / 선로전환기 모듈 : m_moduleLayouts 의 모듈별 이름 칸 수
 int TagNamePrintDlg::GetCardCount() const
 {
-	if (IsNameOnly()) return (int)m_cardCellCounts.size();
+	if (IsNameOnly()) return (int)m_moduleLayouts.size();
 	int totalPorts = (int)tagName.size();
 	return (totalPorts + m_nPortsPerCard - 1) / m_nPortsPerCard;
 }
@@ -354,15 +354,15 @@ int TagNamePrintDlg::GetCardStart(int nCard) const
 {
 	if (!IsNameOnly()) return nCard * m_nPortsPerCard;
 	int nStart = 0;
-	for (int i = 0; i < nCard && i < (int)m_cardCellCounts.size(); ++i)
-		nStart += m_cardCellCounts[i];
+	for (int i = 0; i < nCard && i < (int)m_moduleLayouts.size(); ++i)
+		nStart += (int)m_moduleLayouts[i].offsetsMm.size();
 	return nStart;
 }
 
 int TagNamePrintDlg::GetCardCells(int nCard) const
 {
 	if (!IsNameOnly()) return m_nPortsPerCard;
-	return (nCard >= 0 && nCard < (int)m_cardCellCounts.size()) ? m_cardCellCounts[nCard] : 0;
+	return (nCard >= 0 && nCard < (int)m_moduleLayouts.size()) ? (int)m_moduleLayouts[nCard].offsetsMm.size() : 0;
 }
 
 void TagNamePrintDlg::OnPaint()
@@ -502,11 +502,22 @@ void TagNamePrintDlg::OnPaint()
 					dataStartY = top2Y + nHeaderHeight + nSpacingY;
 				}
 
+				// [추가] 모듈 표찰 : 표찰 띠(자르는 선) 테두리 출력
+				if (IsNameOnly())
+				{
+					CRect rectStrip(currentX, dataStartY, currentX + nLabelWidth, dataStartY + (int)(GetStripLenMm(cardNum) * scaleY));
+					dc.FillSolidRect(&rectStrip, RGB(255, 255, 255));
+					dc.Draw3dRect(&rectStrip, RGB(0, 0, 0), RGB(0, 0, 0));
+				}
+
 				int r = 0;
 				int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 				for (; r < nCells; ++r)
 				{
-					int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
+					// [수정] 모듈 표찰은 전면판 명칭 옆 위치(offsetsMm)에 맞춰 출력
+					int currentY = IsNameOnly()
+						? dataStartY + (int)(GetLabelOffsetMm(cardNum, r) * scaleY)
+						: dataStartY + r * (nLabelHeight + nSpacingY);
 					CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
 
 					dc.FillSolidRect(&rectLabel, RGB(0, 0, 0)); // 데이터는 기존처럼 검은색
@@ -671,11 +682,22 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 						dataStartY = top2Y + nHeaderHeight + nSpacingY;
 					}
 
+					// [추가] 모듈 표찰 : 표찰 띠(자르는 선) 테두리 출력
+					if (IsNameOnly())
+					{
+						CRect rectStrip(currentX, dataStartY, currentX + nLabelWidth, dataStartY + (int)(GetStripLenMm(cardNum) / 25.4 * dpiY));
+						dc.FillSolidRect(&rectStrip, RGB(255, 255, 255));
+						dc.Draw3dRect(&rectStrip, RGB(0, 0, 0), RGB(0, 0, 0));
+					}
+
 					int r = 0;
 					int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 					for (; r < nCells; ++r)
 					{
-						int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
+						// [수정] 모듈 표찰은 전면판 명칭 옆 위치(offsetsMm)에 맞춰 출력
+						int currentY = IsNameOnly()
+							? dataStartY + (int)(GetLabelOffsetMm(cardNum, r) / 25.4 * dpiY)
+							: dataStartY + r * (nLabelHeight + nSpacingY);
 						CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
 
 						dc.FillSolidRect(&rectLabel, RGB(0, 0, 0));
