@@ -774,49 +774,18 @@ void CDataViewExView::OnTagOutcard()
 
 // ==========================================================================
 // [추가] 신호기 / 선로전환기 카드 표찰 인쇄
-//  IN/OUT 과 달리 그리드가 아니라 카드 구조체(SIGNALLIST / SWITCHLIST)에서 직접 읽어
-//  모듈 전면판 표찰 창에 맞춰 명칭 옆 위치에 이름만 인쇄 (머리표 없음, 미사용 포트는 빈 표찰)
-//  띠 길이 / 위치는 표찰 인쇄 화면에서 모듈 종류별로 조절
+//  IN/OUT 과 달리 그리드가 아니라 카드 구조체(SIGNALLIST / SWITCHLIST)에서 직접 읽음
+//  IN/OUT 카드와 같은 형식 : 모듈 1장당 포트 수(신호기 MAX_SIG_MODULE_PORT=4, 선로전환기
+//  MAX_SWH_MODULE_PORT=2)만큼 고정 칸 + 위아래 머리표("SIG n" / "SWI n"), 미사용 포트는 빈 표찰
 //  표찰 이름은 TagName, 비어있으면 Name (EI_IP_IOCard_Typedef.h : "설정하지 않으면 Name 동일한 값으로 설정")
 //  카드 순서/범위는 각 카드 그리드와 동일 (RackNo 0 제외, 역정보의 카드 수 NoOfModuleSig/Swh 까지)
 // ==========================================================================
 namespace
 {
-	// [추가] 모듈 전면판 표찰 배치 기본값 (HW 설계서 전면판 구성도 기준)
-	//  표찰 창(전면판 오른쪽 세로 띠) 안에서 전면판 명칭 오른쪽에 이름이 오도록 위치를 정함
-	//  - 신호기   : 3 = 4등형(신호기1, 신호기2), 4 = 2등형(신호기1~4)
-	//  - 선로전환기 : 5 = NS-AM(PM1, PM2), 6 = MJ81(PM1 옆 1칸, A/B 모듈 각각)
-	//  ※ 구성도 그림 비율로 잡은 추정값 -> 표찰 인쇄 화면에서 사용자가 조절 (레지스트리 저장)
-	TagNamePrintDlg::ModuleKindLayout GetDefaultModuleLayout(Byte_t cardKind, int nMaxPort)
-	{
-		TagNamePrintDlg::ModuleKindLayout layout;
-		layout.key.Format(_T("Kind%d"), (int)cardKind);
-		layout.stripLenMm = 95.0;
-		switch (cardKind)
-		{
-		case 3: layout.name = _T("4등형 신호기"); layout.topMm = 0.5; layout.pitchMm = 19.0; layout.nCells = 2; break;
-		case 4: layout.name = _T("2등형 신호기"); layout.topMm = 0.5; layout.pitchMm = 8.0;  layout.nCells = 4; break;
-		case 5: layout.name = _T("NS-AM");        layout.topMm = 0.5; layout.pitchMm = 19.0; layout.nCells = 2; break;
-		case 6: layout.name = _T("MJ81");         layout.topMm = 2.5; layout.pitchMm = 0.0;  layout.nCells = 1; break;
-		default:
-			layout.name.Format(_T("종류 %d"), (int)cardKind);
-			layout.topMm = 0.5; layout.pitchMm = 8.0; layout.nCells = nMaxPort;
-			break;
-		}
-		return layout;
-	}
-
-	// 신호기 / 선로전환기 카드 표찰 이름 수집 (모듈 순서대로, 모듈 종류별 이름 칸 수만큼)
-	//  - kindLayouts : 등장한 모듈 종류별 배치 (화면 설정 행 1개씩)
-	//  - moduleKinds : 모듈별 kindLayouts 인덱스
 	template <typename CARD_T, size_t N>
-	bool CollectModuleCardTags(std::span<CARD_T> cardList, UINT nMaxCard, std::vector<CString>& names,
-		std::vector<TagNamePrintDlg::ModuleKindLayout>& kindLayouts, std::vector<int>& moduleKinds)
+	bool CollectModuleCardTags(std::span<CARD_T> cardList, UINT nMaxCard, std::vector<CString>& names)
 	{
 		names.clear();
-		kindLayouts.clear();
-		moduleKinds.clear();
-		std::vector<Byte_t> kindCodes;
 		bool bHasTag = false;
 		UINT nCardNo = 0;
 		for (const auto& card : cardList)
@@ -824,48 +793,14 @@ namespace
 			if (card.RackNo == 0) continue;
 			if (++nCardNo > nMaxCard) break;
 
-			std::vector<CString> portNames;
 			for (size_t nPort = 1; nPort <= N; nPort++) // CardData Index : 1부터 사용
 			{
 				const auto& port = card.CardData[nPort];
 				CString strTag = CommonUtil::GetTagName(port);
 				if (strTag.IsEmpty()) strTag = CommonUtil::GetName(port);
-				portNames.push_back(strTag);
+				if (!strTag.IsEmpty()) bHasTag = true;
+				names.push_back(strTag);
 			}
-
-			// 모듈 종류별 배치 (처음 나온 종류만 추가)
-			int nKind = -1;
-			for (int i = 0; i < (int)kindCodes.size(); i++)
-			{
-				if (kindCodes[i] == card.CardKind) { nKind = i; break; }
-			}
-			if (nKind < 0)
-			{
-				kindCodes.push_back(card.CardKind);
-				kindLayouts.push_back(GetDefaultModuleLayout(card.CardKind, (int)N));
-				nKind = (int)kindLayouts.size() - 1;
-			}
-			moduleKinds.push_back(nKind);
-
-			int nCells = kindLayouts[nKind].nCells;
-			if (nCells == 1)
-			{
-				// MJ81 : 첨단/크로싱이 같은 선로전환기 -> 비어있지 않은 첫 이름 1칸
-				CString strName;
-				for (const auto& str : portNames)
-				{
-					if (!str.IsEmpty()) { strName = str; break; }
-				}
-				names.push_back(strName);
-			}
-			else
-			{
-				for (int i = 0; i < nCells; i++) names.push_back(i < (int)portNames.size() ? portNames[i] : CString());
-			}
-		}
-		for (const auto& str : names)
-		{
-			if (!str.IsEmpty()) { bHasTag = true; break; }
 		}
 		return bHasTag;
 	}
@@ -881,9 +816,7 @@ void CDataViewExView::OnTagSigcard()
 	}
 
 	std::vector<CString> names;
-	std::vector<TagNamePrintDlg::ModuleKindLayout> kindLayouts;
-	std::vector<int> moduleKinds;
-	if (!CollectModuleCardTags<SIG_CARDTABLE, MAX_SIG_MODULE_PORT>(md.GetSignalCardInfo(), md.GetStationInfo().NoOfModuleSig, names, kindLayouts, moduleKinds))
+	if (!CollectModuleCardTags<SIG_CARDTABLE, MAX_SIG_MODULE_PORT>(md.GetSignalCardInfo(), md.GetStationInfo().NoOfModuleSig, names))
 	{
 		AfxMessageBox(_T("인쇄할 신호기 카드 표찰 데이터가 존재하지 않습니다."));
 		return;
@@ -892,7 +825,7 @@ void CDataViewExView::OnTagSigcard()
 	TagNamePrintDlg printDlg;
 	printDlg.tagName = names;
 	printDlg.m_isOutCard = false;
-	printDlg.SetModuleCards(kindLayouts, moduleKinds, _T("SIGNAL Card List"));
+	printDlg.SetCardKind(MAX_SIG_MODULE_PORT, _T("SIG"), _T("SIGNAL Card List"));
 	printDlg.DoModal();
 }
 
@@ -906,9 +839,7 @@ void CDataViewExView::OnTagSwhcard()
 	}
 
 	std::vector<CString> names;
-	std::vector<TagNamePrintDlg::ModuleKindLayout> kindLayouts;
-	std::vector<int> moduleKinds;
-	if (!CollectModuleCardTags<SWH_CARDTABLE, MAX_SWH_MODULE_PORT>(md.GetSwitchCardInfo(), md.GetStationInfo().NoOfModuleSwh, names, kindLayouts, moduleKinds))
+	if (!CollectModuleCardTags<SWH_CARDTABLE, MAX_SWH_MODULE_PORT>(md.GetSwitchCardInfo(), md.GetStationInfo().NoOfModuleSwh, names))
 	{
 		AfxMessageBox(_T("인쇄할 선로전환기 카드 표찰 데이터가 존재하지 않습니다."));
 		return;
@@ -917,7 +848,7 @@ void CDataViewExView::OnTagSwhcard()
 	TagNamePrintDlg printDlg;
 	printDlg.tagName = names;
 	printDlg.m_isOutCard = false;
-	printDlg.SetModuleCards(kindLayouts, moduleKinds, _T("SWITCH Card List"));
+	printDlg.SetCardKind(MAX_SWH_MODULE_PORT, _T("SWI"), _T("SWITCH Card List"));
 	printDlg.DoModal();
 }
 void CDataViewExView::OnDiffTool()
