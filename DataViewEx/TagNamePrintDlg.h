@@ -43,19 +43,38 @@ public:
 		m_nPortsPerCard = (nPortsPerCard > 0) ? nPortsPerCard : 16;
 		m_strCardLabel = pszCardLabel;
 		m_strListTitle = pszListTitle;
-		m_cardCellCounts.clear();
+		m_moduleLayouts.clear();
 	}
 
 	// [추가] 신호기 / 선로전환기 모듈 표찰 : 머리표 없이 이름 칸만 인쇄
-	//  - cellCounts : 모듈별 이름 칸 수 (tagName 은 모듈 순서대로 이 개수씩 이어서 채워져 있어야 함)
-	std::vector<int> m_cardCellCounts;
-	void SetModuleCards(const std::vector<int>& cellCounts, LPCTSTR pszListTitle)
+	//  모듈 전면판 오른쪽 표찰 창(세로 띠)에 끼우는 용도라, 띠 길이 안에서 각 이름을
+	//  전면판 명칭(신호기1, PM1 ...) 옆 위치에 맞춰 인쇄한다.
+	//  - stripLenMm : 표찰 띠 전체 길이 (mm)
+	//  - offsetsMm  : 띠 위쪽 끝에서 각 이름 칸 위쪽까지 거리 (mm), 개수 = 이름 칸 수
+	//  tagName 은 모듈 순서대로 offsetsMm 개수씩 이어서 채워져 있어야 함
+	struct ModuleLabelLayout
 	{
-		m_cardCellCounts = cellCounts;
+		double stripLenMm = 0.0;
+		std::vector<double> offsetsMm;
+	};
+	std::vector<ModuleLabelLayout> m_moduleLayouts;
+	void SetModuleCards(const std::vector<ModuleLabelLayout>& layouts, LPCTSTR pszListTitle)
+	{
+		m_moduleLayouts = layouts;
 		m_strCardLabel.Empty();
 		m_strListTitle = pszListTitle;
 	}
-	bool IsNameOnly() const { return !m_cardCellCounts.empty(); }
+	bool IsNameOnly() const { return !m_moduleLayouts.empty(); }
+	double GetStripLenMm(int nCard) const
+	{
+		return (nCard >= 0 && nCard < (int)m_moduleLayouts.size()) ? m_moduleLayouts[nCard].stripLenMm : 0.0;
+	}
+	double GetLabelOffsetMm(int nCard, int nCell) const
+	{
+		if (nCard < 0 || nCard >= (int)m_moduleLayouts.size()) return 0.0;
+		const auto& offsets = m_moduleLayouts[nCard].offsetsMm;
+		return (nCell >= 0 && nCell < (int)offsets.size()) ? offsets[nCell] : 0.0;
+	}
 	int GetCardCount() const;
 	int GetCardStart(int nCard) const;
 	int GetCardCells(int nCard) const;
