@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h" // Or pch.h depending on your project setup
 #include "resource.h"
 #include "TagNamePrintDlg.h"
+#include <algorithm>
 
 // Note: Ensure IDD_TAGNAME_DLG, IDC_STATIC_PREVIEW, and IDC_BTN_PRINT 
 // are defined in your Resource.h with correct resource IDs.
@@ -342,10 +343,10 @@ END_MESSAGE_MAP()
 //}
 // [추가] 카드(모듈) 수 / 시작 위치 / 이름 칸 수
 //  - IN/OUT 카드 : 카드당 m_nPortsPerCard 칸 고정
-//  - 신호기 / 선로전환기 모듈 : m_moduleLayouts 의 모듈별 이름 칸 수
+//  - 신호기 / 선로전환기 모듈 : 모듈 종류(m_kindLayouts)별 이름 칸 수
 int TagNamePrintDlg::GetCardCount() const
 {
-	if (IsNameOnly()) return (int)m_moduleLayouts.size();
+	if (IsNameOnly()) return (int)m_moduleKinds.size();
 	int totalPorts = (int)tagName.size();
 	return (totalPorts + m_nPortsPerCard - 1) / m_nPortsPerCard;
 }
@@ -354,15 +355,16 @@ int TagNamePrintDlg::GetCardStart(int nCard) const
 {
 	if (!IsNameOnly()) return nCard * m_nPortsPerCard;
 	int nStart = 0;
-	for (int i = 0; i < nCard && i < (int)m_moduleLayouts.size(); ++i)
-		nStart += (int)m_moduleLayouts[i].offsetsMm.size();
+	for (int i = 0; i < nCard; ++i)
+		nStart += GetCardCells(i);
 	return nStart;
 }
 
 int TagNamePrintDlg::GetCardCells(int nCard) const
 {
 	if (!IsNameOnly()) return m_nPortsPerCard;
-	return (nCard >= 0 && nCard < (int)m_moduleLayouts.size()) ? (int)m_moduleLayouts[nCard].offsetsMm.size() : 0;
+	const auto* pLayout = GetModuleLayout(nCard);
+	return (pLayout != nullptr) ? pLayout->nCells : 0;
 }
 
 void TagNamePrintDlg::OnPaint()
@@ -514,7 +516,7 @@ void TagNamePrintDlg::OnPaint()
 				int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 				for (; r < nCells; ++r)
 				{
-					// [수정] 모듈 표찰은 전면판 명칭 옆 위치(offsetsMm)에 맞춰 출력
+					// [수정] 모듈 표찰은 전면판 명칭 옆 위치(첫 칸 위치 + 칸 간격)에 맞춰 출력
 					int currentY = IsNameOnly()
 						? dataStartY + (int)(GetLabelOffsetMm(cardNum, r) * scaleY)
 						: dataStartY + r * (nLabelHeight + nSpacingY);
@@ -694,7 +696,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 					for (; r < nCells; ++r)
 					{
-						// [수정] 모듈 표찰은 전면판 명칭 옆 위치(offsetsMm)에 맞춰 출력
+						// [수정] 모듈 표찰은 전면판 명칭 옆 위치(첫 칸 위치 + 칸 간격)에 맞춰 출력
 						int currentY = IsNameOnly()
 							? dataStartY + (int)(GetLabelOffsetMm(cardNum, r) / 25.4 * dpiY)
 							: dataStartY + r * (nLabelHeight + nSpacingY);
@@ -785,38 +787,240 @@ BOOL TagNamePrintDlg::OnInitDialog()
 		pPreview->MoveWindow(20, 20, dlgWidth - 40, dlgHeight - btnHeight - 75);
 	}
 
+	// [추가] 표찰 크기 / 위치 조절 UI (저장된 값 불러온 뒤 배치)
+	LoadSettings();
+	LayoutSettingControls();
+	UpdateSettingEdits();
+
 	return TRUE;
 }
 
 void TagNamePrintDlg::OnBnClickedCellChangeButton()
 {
-	CString strWidth, strHeight, strSpacing;
-	GetDlgItemText(IDC_EDIT_W, strWidth);
-	GetDlgItemText(IDC_EDIT_H, strHeight);
-	GetDlgItemText(IDC_EDIT_S, strSpacing);
+	CString str;
+	GetDlgItemText(IDC_EDIT_W, str);
+	if (!str.IsEmpty()) m_cellWidthMm = _tstof(str);
+	GetDlgItemText(IDC_EDIT_H, str);
+	if (!str.IsEmpty()) m_cellHeightMm = _tstof(str);
+	GetDlgItemText(IDC_EDIT_S, str);
+	if (!str.IsEmpty()) m_cellSpacingYMm = _tstof(str);
 
-	if (!strWidth.IsEmpty()) m_cellWidthMm = _tstof(strWidth);
-	if (!strHeight.IsEmpty()) m_cellHeightMm = _tstof(strHeight);
-	if (!strSpacing.IsEmpty()) m_cellSpacingYMm = _tstof(strSpacing);
+	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 8.0mm, 세로간격 0.0 ~ 3.0mm)
+	m_cellWidthMm = (std::min)((std::max)(m_cellWidthMm, 1.0), 14.0);
+	m_cellHeightMm = (std::min)((std::max)(m_cellHeightMm, 1.0), 8.0);
+	m_cellSpacingYMm = (std::min)((std::max)(m_cellSpacingYMm, 0.0), 3.0);
 
-	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 5.0mm, 세로간격 0.0 ~ 3.0mm)
-	if (m_cellWidthMm < 1.0) m_cellWidthMm = 1.0;
-	if (m_cellWidthMm > 14.0) m_cellWidthMm = 14.0;
-	if (m_cellHeightMm < 1.0) m_cellHeightMm = 1.0;
-	if (m_cellHeightMm > 8.0) m_cellHeightMm = 8.0;
-	if (m_cellSpacingYMm < 0.0) m_cellSpacingYMm = 0.0;
-	if (m_cellSpacingYMm > 3.0) m_cellSpacingYMm = 3.0;
+	// [추가] 모듈 종류별 띠 길이 / 첫 칸 위치 / 칸 간격 (띠 길이 10 ~ 180mm, 위치·간격은 띠 길이 이내)
+	for (size_t i = 0; i < m_kindRows.size() && i < m_kindLayouts.size(); ++i)
+	{
+		auto& layout = m_kindLayouts[i];
+		double* pValues[3] = { &layout.stripLenMm, &layout.topMm, &layout.pitchMm };
+		for (int k = 0; k < 3; ++k)
+		{
+			if (m_kindRows[i].pEdit[k] == nullptr) continue;
+			m_kindRows[i].pEdit[k]->GetWindowText(str);
+			if (!str.IsEmpty()) *pValues[k] = _tstof(str);
+		}
+		layout.stripLenMm = (std::min)((std::max)(layout.stripLenMm, 10.0), 180.0);
+		layout.topMm = (std::min)((std::max)(layout.topMm, 0.0), layout.stripLenMm);
+		layout.pitchMm = (std::min)((std::max)(layout.pitchMm, 0.0), layout.stripLenMm);
+	}
 
-	CString strTempW, strTempH, strTempS;
-	strTempW.Format(_T("%.1f"), m_cellWidthMm);
-	strTempH.Format(_T("%.1f"), m_cellHeightMm);
-	strTempS.Format(_T("%.1f"), m_cellSpacingYMm);
-	SetDlgItemText(IDC_EDIT_W, strTempW);
-	SetDlgItemText(IDC_EDIT_H, strTempH);
-	SetDlgItemText(IDC_EDIT_S, strTempS);
+	SaveSettings();
+	UpdateSettingEdits();
 
 	Invalidate();
 	UpdateWindow();
+}
+
+void TagNamePrintDlg::OnOK()
+{
+	// Enter 키로 대화상자가 닫히지 않도록 설정 적용으로 대체
+	OnBnClickedCellChangeButton();
+}
+
+// [추가] 레지스트리 저장 키 : 카드 목록(IN/OUT/SIGNAL/SWITCH)별로 칸 크기를 따로 저장
+CString TagNamePrintDlg::GetProfileKey(LPCTSTR pszName) const
+{
+	CString strKey;
+	strKey.Format(_T("%s_%s"), (LPCTSTR)m_strListTitle, pszName);
+	return strKey;
+}
+
+namespace
+{
+	const LPCTSTR TAG_PRINT_SECTION = _T("TagPrint");
+
+	double ReadProfileMm(LPCTSTR pszKey, double dDefault)
+	{
+		CString str = AfxGetApp()->GetProfileString(TAG_PRINT_SECTION, pszKey, _T(""));
+		return str.IsEmpty() ? dDefault : _tstof(str);
+	}
+
+	void WriteProfileMm(LPCTSTR pszKey, double dValue)
+	{
+		CString str;
+		str.Format(_T("%.1f"), dValue);
+		AfxGetApp()->WriteProfileString(TAG_PRINT_SECTION, pszKey, str);
+	}
+}
+
+void TagNamePrintDlg::LoadSettings()
+{
+	m_cellWidthMm = ReadProfileMm(GetProfileKey(_T("Width")), m_cellWidthMm);
+	m_cellHeightMm = ReadProfileMm(GetProfileKey(_T("Height")), m_cellHeightMm);
+	m_cellSpacingYMm = ReadProfileMm(GetProfileKey(_T("SpacingY")), m_cellSpacingYMm);
+
+	// 모듈 종류별 배치는 종류 키(Kind3 등)로 저장 -> 신호기 / 선로전환기 목록에서 공유
+	for (auto& layout : m_kindLayouts)
+	{
+		layout.stripLenMm = ReadProfileMm(layout.key + _T("_StripLen"), layout.stripLenMm);
+		layout.topMm = ReadProfileMm(layout.key + _T("_Top"), layout.topMm);
+		layout.pitchMm = ReadProfileMm(layout.key + _T("_Pitch"), layout.pitchMm);
+	}
+}
+
+void TagNamePrintDlg::SaveSettings()
+{
+	WriteProfileMm(GetProfileKey(_T("Width")), m_cellWidthMm);
+	WriteProfileMm(GetProfileKey(_T("Height")), m_cellHeightMm);
+	WriteProfileMm(GetProfileKey(_T("SpacingY")), m_cellSpacingYMm);
+
+	for (const auto& layout : m_kindLayouts)
+	{
+		WriteProfileMm(layout.key + _T("_StripLen"), layout.stripLenMm);
+		WriteProfileMm(layout.key + _T("_Top"), layout.topMm);
+		WriteProfileMm(layout.key + _T("_Pitch"), layout.pitchMm);
+	}
+}
+
+// [추가] 미리보기 아래쪽(왼쪽)에 설정 입력란 배치
+//  1행 : 칸 가로 / 칸 세로 / 세로 간격(IN/OUT 만) + [적용]
+//  모듈 표찰이면 그 위에 종류별 1행씩 : 띠 길이 / 첫 칸 위치 / 칸 간격
+void TagNamePrintDlg::LayoutSettingControls()
+{
+	CWnd* pPreview = GetDlgItem(IDC_STATIC_PREVIEW);
+	CWnd* pPrintBtn = GetDlgItem(IDC_BTN_PRINT);
+	CWnd* pApplyBtn = GetDlgItem(IDC_CELL_CHANGE_BUTTON);
+	CWnd* pEditW = GetDlgItem(IDC_EDIT_W);
+	CWnd* pEditH = GetDlgItem(IDC_EDIT_H);
+	CWnd* pEditS = GetDlgItem(IDC_EDIT_S);
+	if (pPreview == nullptr || pPrintBtn == nullptr || pApplyBtn == nullptr
+		|| pEditW == nullptr || pEditH == nullptr || pEditS == nullptr)
+		return;
+
+	CFont* pFont = GetFont();
+	const int rowHeight = 24;
+	const int rowGap = 6;
+	const int editWidth = 55;
+	const int labelGap = 6;
+	const int groupGap = 18;
+
+	// 인쇄 버튼과 같은 높이를 1행 기준으로 사용 (클라이언트 좌표)
+	CRect rectPrint;
+	pPrintBtn->GetWindowRect(&rectPrint);
+	ScreenToClient(&rectPrint);
+	int nRowY = rectPrint.top + (rectPrint.Height() - rowHeight) / 2;
+
+	CClientDC dc(this);
+	CFont* pOldFont = dc.SelectObject(pFont);
+
+	auto addLabel = [&](std::unique_ptr<CStatic>& pStatic, LPCTSTR pszText, int& x, int y)
+	{
+		int w = dc.GetTextExtent(pszText).cx + 4;
+		pStatic = std::make_unique<CStatic>();
+		pStatic->Create(pszText, WS_CHILD | WS_VISIBLE | SS_RIGHT | SS_CENTERIMAGE, CRect(x, y, x + w, y + rowHeight), this);
+		pStatic->SetFont(pFont);
+		x += w + labelGap;
+	};
+
+	// --- 1행 : 칸 크기 ---
+	int x = 20;
+	struct { LPCTSTR text; CWnd* pEdit; bool bShow; } sizeItems[] = {
+		{ _T("칸 가로(mm)"), pEditW, true },
+		{ _T("칸 세로(mm)"), pEditH, true },
+		{ _T("세로 간격(mm)"), pEditS, !IsNameOnly() }, // 모듈 표찰은 칸 간격을 종류별로 따로 설정
+	};
+	for (auto& item : sizeItems)
+	{
+		if (!item.bShow)
+		{
+			item.pEdit->ShowWindow(SW_HIDE);
+			continue;
+		}
+		m_sizeLabels.emplace_back();
+		addLabel(m_sizeLabels.back(), item.text, x, nRowY);
+		item.pEdit->MoveWindow(x, nRowY, editWidth, rowHeight);
+		item.pEdit->ShowWindow(SW_SHOW);
+		x += editWidth + groupGap;
+	}
+	pApplyBtn->SetWindowText(_T("적용"));
+	pApplyBtn->MoveWindow(x, nRowY, 70, rowHeight);
+	pApplyBtn->ShowWindow(SW_SHOW);
+
+	// --- 모듈 종류별 행 (1행 위로 쌓음) ---
+	m_kindRows.clear();
+	m_kindRows.resize(IsNameOnly() ? m_kindLayouts.size() : 0);
+	int nTopY = nRowY;
+	for (size_t i = 0; i < m_kindRows.size(); ++i)
+	{
+		auto& row = m_kindRows[i];
+		int y = nRowY - (int)(m_kindRows.size() - i) * (rowHeight + rowGap);
+		nTopY = (std::min)(nTopY, y);
+		x = 20;
+
+		CString strTitle;
+		strTitle.Format(_T("[%s]"), (LPCTSTR)m_kindLayouts[i].name);
+		row.pTitle = std::make_unique<CStatic>();
+		row.pTitle->Create(strTitle, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE, CRect(x, y, x + 110, y + rowHeight), this);
+		row.pTitle->SetFont(pFont);
+		x += 110 + labelGap;
+
+		LPCTSTR texts[3] = { _T("띠 길이(mm)"), _T("첫 칸 위치(mm)"), _T("칸 간격(mm)") };
+		for (int k = 0; k < 3; ++k)
+		{
+			addLabel(row.pLabel[k], texts[k], x, y);
+			row.pEdit[k] = std::make_unique<CEdit>();
+			row.pEdit[k]->CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""), WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
+				CRect(x, y, x + editWidth, y + rowHeight), this, 0);
+			row.pEdit[k]->SetFont(pFont);
+			x += editWidth + groupGap;
+		}
+	}
+	dc.SelectObject(pOldFont);
+
+	// 미리보기 영역이 설정 행과 겹치지 않도록 높이 조정
+	CRect rectPreview;
+	pPreview->GetWindowRect(&rectPreview);
+	ScreenToClient(&rectPreview);
+	if (rectPreview.bottom > nTopY - 10)
+	{
+		rectPreview.bottom = nTopY - 10;
+		pPreview->MoveWindow(&rectPreview);
+	}
+}
+
+void TagNamePrintDlg::UpdateSettingEdits()
+{
+	CString str;
+	str.Format(_T("%.1f"), m_cellWidthMm);
+	SetDlgItemText(IDC_EDIT_W, str);
+	str.Format(_T("%.1f"), m_cellHeightMm);
+	SetDlgItemText(IDC_EDIT_H, str);
+	str.Format(_T("%.1f"), m_cellSpacingYMm);
+	SetDlgItemText(IDC_EDIT_S, str);
+
+	for (size_t i = 0; i < m_kindRows.size() && i < m_kindLayouts.size(); ++i)
+	{
+		const auto& layout = m_kindLayouts[i];
+		double values[3] = { layout.stripLenMm, layout.topMm, layout.pitchMm };
+		for (int k = 0; k < 3; ++k)
+		{
+			if (m_kindRows[i].pEdit[k] == nullptr) continue;
+			str.Format(_T("%.1f"), values[k]);
+			m_kindRows[i].pEdit[k]->SetWindowText(str);
+		}
+	}
 }
 
 void TagNamePrintDlg::OnBnClickedBtnPrevPage()
