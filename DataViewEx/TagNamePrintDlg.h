@@ -50,6 +50,7 @@ public:
 		m_nPortsPerCard = (nPortsPerCard > 0) ? nPortsPerCard : 16;
 		m_strCardLabel = pszCardLabel;
 		m_strListTitle = pszListTitle;
+		m_cardUsedCells.clear();
 
 		// [추가] 신호기(4포트) / 선로전환기(2포트) 모듈은 표찰 창 길이에 맞추려면 포트 칸 사이를
 		// IN/OUT(16포트)보다 넓게 띄워야 하므로 세로 간격 기본값 / 최대값을 따로 둠
@@ -67,6 +68,15 @@ public:
 			m_maxBottomBlankMm = 30.0;
 			m_maxCellHeightMm = 8.0;
 		}
+	}
+
+	// [추가] 카드별 실제 사용 포트 수 (비어있으면 모든 카드 m_nPortsPerCard)
+	//  4등형 신호기는 포트가 2개뿐이라 2칸만 출력, 카드 길이는 2등형(4칸)과 동일하게 유지
+	std::vector<int> m_cardUsedCells;
+	int GetCardUsedCells(int nCard) const
+	{
+		if (nCard < 0 || nCard >= (int)m_cardUsedCells.size()) return m_nPortsPerCard;
+		return (std::min)(m_cardUsedCells[nCard], m_nPortsPerCard);
 	}
 
 	int GetCardCount() const;

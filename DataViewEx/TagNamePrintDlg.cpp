@@ -582,6 +582,9 @@ void TagNamePrintDlg::OnPaint()
 				int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 				for (; r < nCells; ++r)
 				{
+					// [추가] 실제 사용 포트 수만큼만 칸 출력 (4등형 신호기 : 2칸), 카드 길이는 그대로 유지
+					if (r >= GetCardUsedCells(cardNum)) continue;
+
 					int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
 					CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
 
@@ -760,6 +763,9 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 					for (; r < nCells; ++r)
 					{
+						// [추가] 실제 사용 포트 수만큼만 칸 출력 (4등형 신호기 : 2칸), 카드 길이는 그대로 유지
+						if (r >= GetCardUsedCells(cardNum)) continue;
+
 						int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
 						CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
 
