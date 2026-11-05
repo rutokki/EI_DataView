@@ -58,6 +58,7 @@ public:
 	static constexpr double TAG_USABLE_HEIGHT_MM = 175.0; // A4 세로 210mm - 제목 / 상하 여백
 	static constexpr double TAG_COL_GAP_MM = 0.5;         // 카드 사이 가로 간격
 	static constexpr double TAG_ROW_GAP_MM = 3.0;         // 카드 줄 사이 세로 간격
+	static constexpr double TAG_HEADER_HEIGHT_MM = 2.4;   // 머리표 높이 (칸 크기 조절과 무관하게 고정)
 	static constexpr int TAG_CARDS_PER_ROW = 16;          // 한 줄 카드 수 (MAX_IO_CARD_SLOT : 서브랙당 슬롯 수)
 	static constexpr int TAG_ROWS_PER_PAGE = 2;           // 위아래 줄 수
 	double GetCardHeightMm() const;
