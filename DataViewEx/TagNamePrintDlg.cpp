@@ -582,17 +582,21 @@ void TagNamePrintDlg::OnPaint()
 				int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 				for (; r < nCells; ++r)
 				{
-					// [추가] 실제 사용 포트 수만큼만 칸 출력 (4등형 신호기 : 2칸), 카드 길이는 그대로 유지
-					if (r >= GetCardUsedCells(cardNum)) continue;
+					// [수정] 실제 사용 포트 수가 적은 카드(4등형 신호기 : 2칸)는 한 칸이 여러 슬롯을 차지하도록 늘려서
+					//        전체 칸 영역 크기를 2등형(4칸)과 동일하게 맞춤 (4등형 : 1칸 = 2슬롯)
+					int nUsed = (std::max)(1, GetCardUsedCells(cardNum));
+					int nSpan = (std::max)(1, nCells / nUsed);
+					if (r % nSpan != 0 || r / nSpan >= nUsed) continue;
 
 					int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
-					CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
+					int nCellHeight = nSpan * nLabelHeight + (nSpan - 1) * nSpacingY;
+					CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nCellHeight);
 
 					dc.FillSolidRect(&rectLabel, RGB(0, 0, 0)); // 데이터는 기존처럼 검은색
 					dc.Draw3dRect(&rectLabel, RGB(50, 50, 50), RGB(200, 200, 200));
 
 					// 포트(태그) 이름 출력
-					int portIndex = GetCardStart(cardNum) + r;
+					int portIndex = GetCardStart(cardNum) + r / nSpan;
 					if (portIndex < totalPorts)
 					{
 						DrawFitText(dc, tagName[portIndex], rectLabel); // [수정] 칸 크기에 맞춰 글자 크기 자동 조절
@@ -763,16 +767,20 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 					for (; r < nCells; ++r)
 					{
-						// [추가] 실제 사용 포트 수만큼만 칸 출력 (4등형 신호기 : 2칸), 카드 길이는 그대로 유지
-						if (r >= GetCardUsedCells(cardNum)) continue;
+						// [수정] 실제 사용 포트 수가 적은 카드(4등형 신호기 : 2칸)는 한 칸이 여러 슬롯을 차지하도록 늘려서
+						//        전체 칸 영역 크기를 2등형(4칸)과 동일하게 맞춤 (4등형 : 1칸 = 2슬롯)
+						int nUsed = (std::max)(1, GetCardUsedCells(cardNum));
+						int nSpan = (std::max)(1, nCells / nUsed);
+						if (r % nSpan != 0 || r / nSpan >= nUsed) continue;
 
 						int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
-						CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
+						int nCellHeight = nSpan * nLabelHeight + (nSpan - 1) * nSpacingY;
+						CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nCellHeight);
 
 						dc.FillSolidRect(&rectLabel, RGB(0, 0, 0));
 						dc.Draw3dRect(&rectLabel, RGB(50, 50, 50), RGB(200, 200, 200));
 
-						int portIndex = GetCardStart(cardNum) + r;
+						int portIndex = GetCardStart(cardNum) + r / nSpan;
 						if (portIndex < totalPorts)
 						{
 							DrawFitText(dc, tagName[portIndex], rectLabel); // [수정] 칸 크기에 맞춰 글자 크기 자동 조절

@@ -71,7 +71,7 @@ public:
 	}
 
 	// [추가] 카드별 실제 사용 포트 수 (비어있으면 모든 카드 m_nPortsPerCard)
-	//  4등형 신호기는 포트가 2개뿐이라 2칸만 출력, 카드 길이는 2등형(4칸)과 동일하게 유지
+	//  4등형 신호기는 포트가 2개뿐이라 2칸만 출력, 한 칸을 2슬롯 크기로 늘려 전체 크기는 2등형(4칸)과 동일
 	std::vector<int> m_cardUsedCells;
 	int GetCardUsedCells(int nCard) const
 	{
