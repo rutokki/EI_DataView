@@ -28,6 +28,7 @@ protected:
 	double m_bottomBlankMm;  // [추가] 마지막 포트 칸과 아래 꼬리표 사이 공백 (mm)
 	double m_maxSpacingYMm;  // [추가] 세로 간격 최대값 (IN/OUT 3mm, 신호기 / 선로전환기 모듈 40mm)
 	double m_maxBottomBlankMm; // [추가] 하단 공백 최대값 (IN/OUT 30mm, 신호기 / 선로전환기 모듈 120mm)
+	double m_maxCellHeightMm;  // [추가] 칸 세로 최대값 (IN/OUT 8mm, 신호기 / 선로전환기 모듈 20mm)
 	int m_nCurrentPage;
 	DECLARE_MESSAGE_MAP()
 public:
@@ -58,11 +59,13 @@ public:
 			m_cellSpacingYMm = (m_nPortsPerCard <= 2) ? 15.0 : 4.0;
 			m_maxSpacingYMm = 40.0;
 			m_maxBottomBlankMm = 120.0; // 모듈 표찰 창이 길어 하단 공백을 크게 잡을 수 있게
+			m_maxCellHeightMm = 20.0;
 		}
 		else
 		{
 			m_maxSpacingYMm = 3.0;
 			m_maxBottomBlankMm = 30.0;
+			m_maxCellHeightMm = 8.0;
 		}
 	}
 
