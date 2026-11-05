@@ -17,6 +17,7 @@ TagNamePrintDlg::TagNamePrintDlg(CWnd* pParent /*=nullptr*/)
 	, m_cellSpacingYMm(0.5)
 	, m_bottomBlankMm(0.0)
 	, m_maxSpacingYMm(3.0)
+	, m_maxBottomBlankMm(30.0)
 	, m_isOutCard(false)
 	, m_nPortsPerCard(16)
 	, m_strCardLabel(_T("In"))
@@ -876,12 +877,13 @@ void TagNamePrintDlg::OnBnClickedCellChangeButton()
 		if (!str.IsEmpty()) m_bottomBlankMm = _tstof(str);
 	}
 
-	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 8.0mm, 하단 공백 0.0 ~ 30.0mm)
+	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 8.0mm)
+	// 하단 공백 : IN/OUT 0.0 ~ 30.0mm, 신호기 / 선로전환기 모듈 0.0 ~ 120.0mm (m_maxBottomBlankMm)
 	// 세로간격 : IN/OUT(16포트) 0.0 ~ 3.0mm, 신호기 / 선로전환기 모듈(4 / 2포트) 0.0 ~ 40.0mm (m_maxSpacingYMm)
 	m_cellWidthMm = (std::min)((std::max)(m_cellWidthMm, 1.0), 14.0);
 	m_cellHeightMm = (std::min)((std::max)(m_cellHeightMm, 1.0), 8.0);
 	m_cellSpacingYMm = (std::min)((std::max)(m_cellSpacingYMm, 0.0), m_maxSpacingYMm);
-	m_bottomBlankMm = (std::min)((std::max)(m_bottomBlankMm, 0.0), 30.0);
+	m_bottomBlankMm = (std::min)((std::max)(m_bottomBlankMm, 0.0), m_maxBottomBlankMm);
 
 	SaveSettings();
 	UpdateSettingEdits();
