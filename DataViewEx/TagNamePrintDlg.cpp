@@ -18,6 +18,7 @@ TagNamePrintDlg::TagNamePrintDlg(CWnd* pParent /*=nullptr*/)
 	, m_bottomBlankMm(0.0)
 	, m_maxSpacingYMm(3.0)
 	, m_maxBottomBlankMm(30.0)
+	, m_maxCellHeightMm(8.0)
 	, m_isOutCard(false)
 	, m_nPortsPerCard(16)
 	, m_strCardLabel(_T("In"))
@@ -581,14 +582,21 @@ void TagNamePrintDlg::OnPaint()
 				int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 				for (; r < nCells; ++r)
 				{
+					// [수정] 실제 사용 포트 수가 적은 카드(4등형 신호기 : 2칸)는 한 칸이 여러 슬롯을 차지하도록 늘려서
+					//        전체 칸 영역 크기를 2등형(4칸)과 동일하게 맞춤 (4등형 : 1칸 = 2슬롯)
+					int nUsed = (std::max)(1, GetCardUsedCells(cardNum));
+					int nSpan = (std::max)(1, nCells / nUsed);
+					if (r % nSpan != 0 || r / nSpan >= nUsed) continue;
+
 					int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
-					CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
+					int nCellHeight = nSpan * nLabelHeight + (nSpan - 1) * nSpacingY;
+					CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nCellHeight);
 
 					dc.FillSolidRect(&rectLabel, RGB(0, 0, 0)); // 데이터는 기존처럼 검은색
 					dc.Draw3dRect(&rectLabel, RGB(50, 50, 50), RGB(200, 200, 200));
 
 					// 포트(태그) 이름 출력
-					int portIndex = GetCardStart(cardNum) + r;
+					int portIndex = GetCardStart(cardNum) + r / nSpan;
 					if (portIndex < totalPorts)
 					{
 						DrawFitText(dc, tagName[portIndex], rectLabel); // [수정] 칸 크기에 맞춰 글자 크기 자동 조절
@@ -759,13 +767,20 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
 					for (; r < nCells; ++r)
 					{
+						// [수정] 실제 사용 포트 수가 적은 카드(4등형 신호기 : 2칸)는 한 칸이 여러 슬롯을 차지하도록 늘려서
+						//        전체 칸 영역 크기를 2등형(4칸)과 동일하게 맞춤 (4등형 : 1칸 = 2슬롯)
+						int nUsed = (std::max)(1, GetCardUsedCells(cardNum));
+						int nSpan = (std::max)(1, nCells / nUsed);
+						if (r % nSpan != 0 || r / nSpan >= nUsed) continue;
+
 						int currentY = dataStartY + r * (nLabelHeight + nSpacingY);
-						CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nLabelHeight);
+						int nCellHeight = nSpan * nLabelHeight + (nSpan - 1) * nSpacingY;
+						CRect rectLabel(currentX, currentY, currentX + nLabelWidth, currentY + nCellHeight);
 
 						dc.FillSolidRect(&rectLabel, RGB(0, 0, 0));
 						dc.Draw3dRect(&rectLabel, RGB(50, 50, 50), RGB(200, 200, 200));
 
-						int portIndex = GetCardStart(cardNum) + r;
+						int portIndex = GetCardStart(cardNum) + r / nSpan;
 						if (portIndex < totalPorts)
 						{
 							DrawFitText(dc, tagName[portIndex], rectLabel); // [수정] 칸 크기에 맞춰 글자 크기 자동 조절
@@ -877,11 +892,12 @@ void TagNamePrintDlg::OnBnClickedCellChangeButton()
 		if (!str.IsEmpty()) m_bottomBlankMm = _tstof(str);
 	}
 
-	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 8.0mm)
+	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm)
+	// 칸 세로 : IN/OUT 1.0 ~ 8.0mm, 신호기 / 선로전환기 모듈 1.0 ~ 20.0mm (m_maxCellHeightMm)
 	// 하단 공백 : IN/OUT 0.0 ~ 30.0mm, 신호기 / 선로전환기 모듈 0.0 ~ 120.0mm (m_maxBottomBlankMm)
 	// 세로간격 : IN/OUT(16포트) 0.0 ~ 3.0mm, 신호기 / 선로전환기 모듈(4 / 2포트) 0.0 ~ 40.0mm (m_maxSpacingYMm)
 	m_cellWidthMm = (std::min)((std::max)(m_cellWidthMm, 1.0), 14.0);
-	m_cellHeightMm = (std::min)((std::max)(m_cellHeightMm, 1.0), 8.0);
+	m_cellHeightMm = (std::min)((std::max)(m_cellHeightMm, 1.0), m_maxCellHeightMm);
 	m_cellSpacingYMm = (std::min)((std::max)(m_cellSpacingYMm, 0.0), m_maxSpacingYMm);
 	m_bottomBlankMm = (std::min)((std::max)(m_bottomBlankMm, 0.0), m_maxBottomBlankMm);
 

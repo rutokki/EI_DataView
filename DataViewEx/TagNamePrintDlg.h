@@ -28,6 +28,7 @@ protected:
 	double m_bottomBlankMm;  // [추가] 마지막 포트 칸과 아래 꼬리표 사이 공백 (mm)
 	double m_maxSpacingYMm;  // [추가] 세로 간격 최대값 (IN/OUT 3mm, 신호기 / 선로전환기 모듈 40mm)
 	double m_maxBottomBlankMm; // [추가] 하단 공백 최대값 (IN/OUT 30mm, 신호기 / 선로전환기 모듈 120mm)
+	double m_maxCellHeightMm;  // [추가] 칸 세로 최대값 (IN/OUT 8mm, 신호기 / 선로전환기 모듈 20mm)
 	int m_nCurrentPage;
 	DECLARE_MESSAGE_MAP()
 public:
@@ -49,6 +50,7 @@ public:
 		m_nPortsPerCard = (nPortsPerCard > 0) ? nPortsPerCard : 16;
 		m_strCardLabel = pszCardLabel;
 		m_strListTitle = pszListTitle;
+		m_cardUsedCells.clear();
 
 		// [추가] 신호기(4포트) / 선로전환기(2포트) 모듈은 표찰 창 길이에 맞추려면 포트 칸 사이를
 		// IN/OUT(16포트)보다 넓게 띄워야 하므로 세로 간격 기본값 / 최대값을 따로 둠
@@ -58,12 +60,23 @@ public:
 			m_cellSpacingYMm = (m_nPortsPerCard <= 2) ? 15.0 : 4.0;
 			m_maxSpacingYMm = 40.0;
 			m_maxBottomBlankMm = 120.0; // 모듈 표찰 창이 길어 하단 공백을 크게 잡을 수 있게
+			m_maxCellHeightMm = 20.0;
 		}
 		else
 		{
 			m_maxSpacingYMm = 3.0;
 			m_maxBottomBlankMm = 30.0;
+			m_maxCellHeightMm = 8.0;
 		}
+	}
+
+	// [추가] 카드별 실제 사용 포트 수 (비어있으면 모든 카드 m_nPortsPerCard)
+	//  4등형 신호기는 포트가 2개뿐이라 2칸만 출력, 한 칸을 2슬롯 크기로 늘려 전체 크기는 2등형(4칸)과 동일
+	std::vector<int> m_cardUsedCells;
+	int GetCardUsedCells(int nCard) const
+	{
+		if (nCard < 0 || nCard >= (int)m_cardUsedCells.size()) return m_nPortsPerCard;
+		return (std::min)(m_cardUsedCells[nCard], m_nPortsPerCard);
 	}
 
 	int GetCardCount() const;

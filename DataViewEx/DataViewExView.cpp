@@ -13,6 +13,7 @@
 #include "CommonUtils.h"
 #include "DiffCompareFrame.h"
 #include "TestPrintDlg.h"
+#include <type_traits>
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -782,16 +783,21 @@ void CDataViewExView::OnTagOutcard()
 // ==========================================================================
 namespace
 {
+	// usedCells : 카드별 실제 사용 포트 수 (4등형 신호기 2, 그 외 N)
 	template <typename CARD_T, size_t N>
-	bool CollectModuleCardTags(std::span<CARD_T> cardList, UINT nMaxCard, std::vector<CString>& names)
+	bool CollectModuleCardTags(std::span<CARD_T> cardList, UINT nMaxCard, std::vector<CString>& names, std::vector<int>& usedCells)
 	{
 		names.clear();
+		usedCells.clear();
 		bool bHasTag = false;
 		UINT nCardNo = 0;
 		for (const auto& card : cardList)
 		{
 			if (card.RackNo == 0) continue;
 			if (++nCardNo > nMaxCard) break;
+
+			// [추가] 4등형 신호기(CardKind 3)는 주신호기 2개만 제어 -> 2칸만 출력
+			usedCells.push_back((std::is_same_v<CARD_T, SIG_CARDTABLE> && card.CardKind == 3) ? 2 : (int)N);
 
 			for (size_t nPort = 1; nPort <= N; nPort++) // CardData Index : 1부터 사용
 			{
@@ -816,7 +822,8 @@ void CDataViewExView::OnTagSigcard()
 	}
 
 	std::vector<CString> names;
-	if (!CollectModuleCardTags<SIG_CARDTABLE, MAX_SIG_MODULE_PORT>(md.GetSignalCardInfo(), md.GetStationInfo().NoOfModuleSig, names))
+	std::vector<int> usedCells;
+	if (!CollectModuleCardTags<SIG_CARDTABLE, MAX_SIG_MODULE_PORT>(md.GetSignalCardInfo(), md.GetStationInfo().NoOfModuleSig, names, usedCells))
 	{
 		AfxMessageBox(_T("인쇄할 신호기 카드 표찰 데이터가 존재하지 않습니다."));
 		return;
@@ -826,6 +833,7 @@ void CDataViewExView::OnTagSigcard()
 	printDlg.tagName = names;
 	printDlg.m_isOutCard = false;
 	printDlg.SetCardKind(MAX_SIG_MODULE_PORT, _T("SIG"), _T("SIGNAL Card List"));
+	printDlg.m_cardUsedCells = usedCells;
 	printDlg.DoModal();
 }
 
@@ -839,7 +847,8 @@ void CDataViewExView::OnTagSwhcard()
 	}
 
 	std::vector<CString> names;
-	if (!CollectModuleCardTags<SWH_CARDTABLE, MAX_SWH_MODULE_PORT>(md.GetSwitchCardInfo(), md.GetStationInfo().NoOfModuleSwh, names))
+	std::vector<int> usedCells;
+	if (!CollectModuleCardTags<SWH_CARDTABLE, MAX_SWH_MODULE_PORT>(md.GetSwitchCardInfo(), md.GetStationInfo().NoOfModuleSwh, names, usedCells))
 	{
 		AfxMessageBox(_T("인쇄할 선로전환기 카드 표찰 데이터가 존재하지 않습니다."));
 		return;
@@ -849,6 +858,7 @@ void CDataViewExView::OnTagSwhcard()
 	printDlg.tagName = names;
 	printDlg.m_isOutCard = false;
 	printDlg.SetCardKind(MAX_SWH_MODULE_PORT, _T("SWI"), _T("SWITCH Card List"));
+	printDlg.m_cardUsedCells = usedCells;
 	printDlg.DoModal();
 }
 void CDataViewExView::OnDiffTool()
