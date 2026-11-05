@@ -16,6 +16,7 @@ TagNamePrintDlg::TagNamePrintDlg(CWnd* pParent /*=nullptr*/)
 	, m_nCurrentPage(0)
 	, m_cellSpacingYMm(0.5)
 	, m_bottomBlankMm(0.0)
+	, m_maxSpacingYMm(3.0)
 	, m_isOutCard(false)
 	, m_nPortsPerCard(16)
 	, m_strCardLabel(_T("In"))
@@ -400,9 +401,11 @@ static void DrawFitText(CDC& dc, const CString& strText, const CRect& rect)
 //  칸 크기를 키워 A4 를 넘으면 칸 가로 / 카드 높이 기준으로 들어가는 만큼만
 double TagNamePrintDlg::GetCardHeightMm() const
 {
-	// 머리표 3개(고정 높이) + 머리표 아래 간격 2개 + 포트 칸(칸 세로 + 세로 간격) + 하단 공백
+	// 머리표 3개(고정 높이) + 머리표 앞뒤 간격 3개 + 포트 칸 n개(칸 세로) + 포트 사이 간격 (n-1)개 + 하단 공백
 	double dHeader = TAG_HEADER_HEIGHT_MM;
-	return dHeader * 3 + m_cellSpacingYMm * 2 + m_nPortsPerCard * (m_cellHeightMm + m_cellSpacingYMm) + m_bottomBlankMm;
+	double dGap = GetHeaderGapMm();
+	return dHeader * 3 + dGap * 3 + m_nPortsPerCard * m_cellHeightMm
+		+ (std::max)(0, m_nPortsPerCard - 1) * m_cellSpacingYMm + m_bottomBlankMm;
 }
 
 int TagNamePrintDlg::GetCardsPerRow() const
@@ -518,6 +521,7 @@ void TagNamePrintDlg::OnPaint()
 			int nLabelHeight = (int)(m_cellHeightMm * scaleY);
 			int nSpacingX = (int)(0.5 * scaleX);
 			int nSpacingY = (int)(m_cellSpacingYMm * scaleY);
+			int nHeaderGap = (int)(GetHeaderGapMm() * scaleY); // [추가] 머리표 앞뒤 간격
 
 			int contentLeft = rectA4.left + (int)(15.0 * scaleX);
 
@@ -557,7 +561,7 @@ void TagNamePrintDlg::OnPaint()
 				dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 				// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
-				int top2Y = cardTopY + nHeaderHeight + nSpacingY;
+				int top2Y = cardTopY + nHeaderHeight + nHeaderGap;
 				CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
 				CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
 
@@ -570,7 +574,7 @@ void TagNamePrintDlg::OnPaint()
 				dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 				// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
-				int dataStartY = top2Y + nHeaderHeight + nSpacingY;
+				int dataStartY = top2Y + nHeaderHeight + nHeaderGap;
 
 				int r = 0;
 				int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
@@ -591,7 +595,16 @@ void TagNamePrintDlg::OnPaint()
 				}
 
 				// --- 4. 하단 레이블 (2칸, 반반 너비) ---
-				int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
+				// [수정] 하단 공백 : 마지막 포트 칸과 아래 꼬리표(머리표) 사이에 빈 칸 (표찰 홀더 길이 맞춤용)
+				int blankY = dataStartY + r * (nLabelHeight + nSpacingY) - nSpacingY + nHeaderGap; // 마지막 칸 아래 + 머리표 간격
+				int nBottomBlank = (int)(m_bottomBlankMm * scaleY);
+				if (nBottomBlank > 0)
+				{
+					CRect rectBlank(currentX, blankY, currentX + nLabelWidth, blankY + nBottomBlank);
+					dc.FillSolidRect(&rectBlank, RGB(255, 255, 255));
+					dc.Draw3dRect(&rectBlank, RGB(50, 50, 50), RGB(50, 50, 50));
+				}
+				int bottomY = blankY + nBottomBlank;
 				CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
 				CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
 
@@ -603,14 +616,6 @@ void TagNamePrintDlg::OnPaint()
 				dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
 				dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-				// [추가] 하단 공백 : 맨 아래 머리표 밑에 빈 칸 (표찰 홀더 길이 맞춤용)
-				int nBottomBlank = (int)(m_bottomBlankMm * scaleY);
-				if (nBottomBlank > 0)
-				{
-					CRect rectBlank(currentX, bottomY + nHeaderHeight, currentX + nLabelWidth, bottomY + nHeaderHeight + nBottomBlank);
-					dc.FillSolidRect(&rectBlank, RGB(255, 255, 255));
-					dc.Draw3dRect(&rectBlank, RGB(50, 50, 50), RGB(50, 50, 50));
-				}
 			}
 
 			dc.SetTextColor(oldTextColor);
@@ -670,6 +675,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 			int nLabelHeight = (int)((m_cellHeightMm / 25.4) * dpiY);
 			int nSpacingX = (int)((0.5 / 25.4) * dpiX);
 			int nSpacingY = (int)((m_cellSpacingYMm / 25.4) * dpiY);
+			int nHeaderGap = (int)((GetHeaderGapMm() / 25.4) * dpiY); // [추가] 머리표 앞뒤 간격
 			int nMarginX = (int)((10.0 / 25.4) * dpiX);
 			int nMarginY = (int)((10.0 / 25.4) * dpiY);
 
@@ -733,7 +739,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					dc.DrawText(headerStr, &rectTop1, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 					// --- 2. 상단 두 번째 행 (2칸, 반반 너비) ---
-					int top2Y = cardTopY + nHeaderHeight + nSpacingY;
+					int top2Y = cardTopY + nHeaderHeight + nHeaderGap;
 					CRect rectTop2_1(currentX, top2Y, currentX + nHalfWidth, top2Y + nHeaderHeight);
 					CRect rectTop2_2(currentX + nHalfWidth, top2Y, currentX + nLabelWidth, top2Y + nHeaderHeight);
 
@@ -746,7 +752,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					dc.DrawText(headerStr, &rectTop2_2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 					// --- 3. 16포트 데이터 출력 영역 시작 위치 계산 ---
-					int dataStartY = top2Y + nHeaderHeight + nSpacingY;
+					int dataStartY = top2Y + nHeaderHeight + nHeaderGap;
 
 					int r = 0;
 					int nCells = GetCardCells(cardNum); // [수정] 카드(모듈)별 이름 칸 수
@@ -766,7 +772,16 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					}
 
 					// --- 4. 하단 레이블 (2칸, 반반 너비) ---
-					int bottomY = dataStartY + r * (nLabelHeight + nSpacingY);
+					// [수정] 하단 공백 : 마지막 포트 칸과 아래 꼬리표(머리표) 사이에 빈 칸 (표찰 홀더 길이 맞춤용)
+					int blankY = dataStartY + r * (nLabelHeight + nSpacingY) - nSpacingY + nHeaderGap; // 마지막 칸 아래 + 머리표 간격
+					int nBottomBlank = (int)(m_bottomBlankMm / 25.4 * dpiY);
+					if (nBottomBlank > 0)
+					{
+						CRect rectBlank(currentX, blankY, currentX + nLabelWidth, blankY + nBottomBlank);
+						dc.FillSolidRect(&rectBlank, RGB(255, 255, 255));
+						dc.Draw3dRect(&rectBlank, RGB(50, 50, 50), RGB(50, 50, 50));
+					}
+					int bottomY = blankY + nBottomBlank;
 					CRect rectBottom1(currentX, bottomY, currentX + nHalfWidth, bottomY + nHeaderHeight);
 					CRect rectBottom2(currentX + nHalfWidth, bottomY, currentX + nLabelWidth, bottomY + nHeaderHeight);
 
@@ -778,14 +793,6 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
 					dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-					// [추가] 하단 공백 : 맨 아래 머리표 밑에 빈 칸 (표찰 홀더 길이 맞춤용)
-					int nBottomBlank = (int)(m_bottomBlankMm / 25.4 * dpiY);
-					if (nBottomBlank > 0)
-					{
-						CRect rectBlank(currentX, bottomY + nHeaderHeight, currentX + nLabelWidth, bottomY + nHeaderHeight + nBottomBlank);
-						dc.FillSolidRect(&rectBlank, RGB(255, 255, 255));
-						dc.Draw3dRect(&rectBlank, RGB(50, 50, 50), RGB(50, 50, 50));
-					}
 				}
 
 				dc.SetTextColor(oldTextColor);
@@ -869,10 +876,11 @@ void TagNamePrintDlg::OnBnClickedCellChangeButton()
 		if (!str.IsEmpty()) m_bottomBlankMm = _tstof(str);
 	}
 
-	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 8.0mm, 세로간격 0.0 ~ 3.0mm, 하단 공백 0.0 ~ 30.0mm)
+	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 8.0mm, 하단 공백 0.0 ~ 30.0mm)
+	// 세로간격 : IN/OUT(16포트) 0.0 ~ 3.0mm, 신호기 / 선로전환기 모듈(4 / 2포트) 0.0 ~ 40.0mm (m_maxSpacingYMm)
 	m_cellWidthMm = (std::min)((std::max)(m_cellWidthMm, 1.0), 14.0);
 	m_cellHeightMm = (std::min)((std::max)(m_cellHeightMm, 1.0), 8.0);
-	m_cellSpacingYMm = (std::min)((std::max)(m_cellSpacingYMm, 0.0), 3.0);
+	m_cellSpacingYMm = (std::min)((std::max)(m_cellSpacingYMm, 0.0), m_maxSpacingYMm);
 	m_bottomBlankMm = (std::min)((std::max)(m_bottomBlankMm, 0.0), 30.0);
 
 	SaveSettings();

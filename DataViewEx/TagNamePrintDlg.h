@@ -25,7 +25,8 @@ protected:
 	double m_cellWidthMm;
 	double m_cellHeightMm;
 	double m_cellSpacingYMm;
-	double m_bottomBlankMm;  // [추가] 카드 맨 아래 머리표 밑 공백 (mm)
+	double m_bottomBlankMm;  // [추가] 마지막 포트 칸과 아래 꼬리표 사이 공백 (mm)
+	double m_maxSpacingYMm;  // [추가] 세로 간격 최대값 (IN/OUT 3mm, 신호기 / 선로전환기 모듈 40mm)
 	int m_nCurrentPage;
 	DECLARE_MESSAGE_MAP()
 public:
@@ -47,6 +48,19 @@ public:
 		m_nPortsPerCard = (nPortsPerCard > 0) ? nPortsPerCard : 16;
 		m_strCardLabel = pszCardLabel;
 		m_strListTitle = pszListTitle;
+
+		// [추가] 신호기(4포트) / 선로전환기(2포트) 모듈은 표찰 창 길이에 맞추려면 포트 칸 사이를
+		// IN/OUT(16포트)보다 넓게 띄워야 하므로 세로 간격 기본값 / 최대값을 따로 둠
+		//  (저장된 값이 있으면 OnInitDialog 의 LoadSettings 에서 덮어씀)
+		if (m_nPortsPerCard < 16)
+		{
+			m_cellSpacingYMm = (m_nPortsPerCard <= 2) ? 15.0 : 4.0;
+			m_maxSpacingYMm = 40.0;
+		}
+		else
+		{
+			m_maxSpacingYMm = 3.0;
+		}
 	}
 
 	int GetCardCount() const;
@@ -61,6 +75,9 @@ public:
 	static constexpr double TAG_HEADER_HEIGHT_MM = 2.4;   // 머리표 높이 (칸 크기 조절과 무관하게 고정)
 	static constexpr int TAG_CARDS_PER_ROW = 16;          // 한 줄 카드 수 (MAX_IO_CARD_SLOT : 서브랙당 슬롯 수)
 	static constexpr int TAG_ROWS_PER_PAGE = 2;           // 위아래 줄 수
+	static constexpr double TAG_MODULE_HEADER_GAP_MM = 0.5; // 신호기 / 선로전환기 모듈의 머리표 앞뒤 간격
+	// [추가] 머리표 앞뒤 간격 : IN/OUT 은 기존대로 세로 간격과 같음, 모듈은 세로 간격을 크게 잡아도 머리표는 붙여서 출력
+	double GetHeaderGapMm() const { return (m_nPortsPerCard < 16) ? TAG_MODULE_HEADER_GAP_MM : m_cellSpacingYMm; }
 	double GetCardHeightMm() const;
 	int GetCardsPerRow() const;
 	int GetRowsPerPage() const;
