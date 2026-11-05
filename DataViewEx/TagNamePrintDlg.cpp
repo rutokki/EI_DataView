@@ -361,14 +361,47 @@ int TagNamePrintDlg::GetCardCells(int nCard) const
 	return m_nPortsPerCard;
 }
 
+// [추가] 표찰 이름을 칸 크기에 맞는 글자 크기로 출력
+//  글자 높이는 칸 세로의 75%, 이름이 길어 칸 가로를 넘으면 그 비율만큼 줄임
+//  (칸 가로 / 세로를 바꾸면 글자 크기도 같이 바뀜, 미리보기 / 인쇄 공통)
+static void DrawFitText(CDC& dc, const CString& strText, const CRect& rect)
+{
+	if (strText.IsEmpty() || rect.Width() <= 0 || rect.Height() <= 0) return;
+
+	LOGFONT lf = {};
+	lf.lfHeight = -(std::max)(1, (int)(rect.Height() * 0.75));
+	lf.lfCharSet = DEFAULT_CHARSET;
+	lf.lfQuality = CLEARTYPE_QUALITY;
+	_tcscpy_s(lf.lfFaceName, _T("맑은 고딕"));
+
+	CFont font;
+	font.CreateFontIndirect(&lf);
+	CFont* pOldFont = dc.SelectObject(&font);
+
+	int nAvailWidth = (std::max)(1, (int)(rect.Width() * 0.92));
+	CSize size = dc.GetTextExtent(strText);
+	if (size.cx > nAvailWidth)
+	{
+		lf.lfHeight = -(std::max)(1, (int)((double)-lf.lfHeight * nAvailWidth / size.cx));
+		dc.SelectObject(pOldFont);
+		font.DeleteObject();
+		font.CreateFontIndirect(&lf);
+		dc.SelectObject(&font);
+	}
+
+	CRect rectText = rect;
+	dc.DrawText(strText, &rectText, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+	dc.SelectObject(pOldFont);
+}
+
 // [추가] 페이지당 카드 수 계산 (미리보기 / 인쇄 / 페이지 이동 공통)
 //  A4 가로(297 x 210mm) 에서 여백을 뺀 영역(TAG_USABLE_WIDTH_MM x TAG_USABLE_HEIGHT_MM)에
 //  한 줄 16장(서브랙 슬롯 수) x 위아래 2줄 = 페이지당 32장
 //  칸 크기를 키워 A4 를 넘으면 칸 가로 / 카드 높이 기준으로 들어가는 만큼만
 double TagNamePrintDlg::GetCardHeightMm() const
 {
-	// 머리표 3개(칸 세로 x 0.6) + 머리표 아래 간격 2개 + 포트 칸(칸 세로 + 세로 간격) + 하단 공백
-	double dHeader = m_cellHeightMm * 0.6;
+	// 머리표 3개(고정 높이) + 머리표 아래 간격 2개 + 포트 칸(칸 세로 + 세로 간격) + 하단 공백
+	double dHeader = TAG_HEADER_HEIGHT_MM;
 	return dHeader * 3 + m_cellSpacingYMm * 2 + m_nPortsPerCard * (m_cellHeightMm + m_cellSpacingYMm) + m_bottomBlankMm;
 }
 
@@ -510,7 +543,8 @@ void TagNamePrintDlg::OnPaint()
 
 				// 높이 및 너비 계산
 				int nHalfWidth = nLabelWidth / 2;
-				int nHeaderHeight = (int)(nLabelHeight * 0.6); // 헤더 높이를 0.6배로 고정
+				// [수정] 머리표(In/Out/SIG/SWI n) 높이는 칸 크기 조절과 무관하게 고정
+				int nHeaderHeight = (int)(TAG_HEADER_HEIGHT_MM * scaleY);
 
 				CString headerStr;
 				headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
@@ -552,7 +586,7 @@ void TagNamePrintDlg::OnPaint()
 					int portIndex = GetCardStart(cardNum) + r;
 					if (portIndex < totalPorts)
 					{
-						dc.DrawText(tagName[portIndex], &rectLabel, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+						DrawFitText(dc, tagName[portIndex], rectLabel); // [수정] 칸 크기에 맞춰 글자 크기 자동 조절
 					}
 				}
 
@@ -685,7 +719,8 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 
 					// 높이 및 너비 계산
 					int nHalfWidth = nLabelWidth / 2;
-					int nHeaderHeight = (int)(nLabelHeight * 0.6); // 헤더 높이를 0.6배로 고정
+					// [수정] 머리표(In/Out/SIG/SWI n) 높이는 칸 크기 조절과 무관하게 고정
+					int nHeaderHeight = (int)((TAG_HEADER_HEIGHT_MM / 25.4) * dpiY);
 
 					CString headerStr;
 					headerStr.Format(_T("%s %d"), (LPCTSTR)m_strCardLabel, cardNum + 1);
@@ -726,7 +761,7 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 						int portIndex = GetCardStart(cardNum) + r;
 						if (portIndex < totalPorts)
 						{
-							dc.DrawText(tagName[portIndex], &rectLabel, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+							DrawFitText(dc, tagName[portIndex], rectLabel); // [수정] 칸 크기에 맞춰 글자 크기 자동 조절
 						}
 					}
 
