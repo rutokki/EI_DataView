@@ -15,6 +15,7 @@ TagNamePrintDlg::TagNamePrintDlg(CWnd* pParent /*=nullptr*/)
 	, m_cellHeightMm(4) // Default height (0.5cm ~ 2.0cm)
 	, m_nCurrentPage(0)
 	, m_cellSpacingYMm(0.5)
+	, m_bottomBlankMm(0.0)
 	, m_isOutCard(false)
 	, m_nPortsPerCard(16)
 	, m_strCardLabel(_T("In"))
@@ -366,9 +367,9 @@ int TagNamePrintDlg::GetCardCells(int nCard) const
 //  칸 크기를 키워 A4 를 넘으면 칸 가로 / 카드 높이 기준으로 들어가는 만큼만
 double TagNamePrintDlg::GetCardHeightMm() const
 {
-	// 머리표 3개(칸 세로 x 0.6) + 머리표 아래 간격 2개 + 포트 칸(칸 세로 + 세로 간격)
+	// 머리표 3개(칸 세로 x 0.6) + 머리표 아래 간격 2개 + 포트 칸(칸 세로 + 세로 간격) + 하단 공백
 	double dHeader = m_cellHeightMm * 0.6;
-	return dHeader * 3 + m_cellSpacingYMm * 2 + m_nPortsPerCard * (m_cellHeightMm + m_cellSpacingYMm);
+	return dHeader * 3 + m_cellSpacingYMm * 2 + m_nPortsPerCard * (m_cellHeightMm + m_cellSpacingYMm) + m_bottomBlankMm;
 }
 
 int TagNamePrintDlg::GetCardsPerRow() const
@@ -567,6 +568,15 @@ void TagNamePrintDlg::OnPaint()
 				dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
 				dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
 				dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+				// [추가] 하단 공백 : 맨 아래 머리표 밑에 빈 칸 (표찰 홀더 길이 맞춤용)
+				int nBottomBlank = (int)(m_bottomBlankMm * scaleY);
+				if (nBottomBlank > 0)
+				{
+					CRect rectBlank(currentX, bottomY + nHeaderHeight, currentX + nLabelWidth, bottomY + nHeaderHeight + nBottomBlank);
+					dc.FillSolidRect(&rectBlank, RGB(255, 255, 255));
+					dc.Draw3dRect(&rectBlank, RGB(50, 50, 50), RGB(50, 50, 50));
+				}
 			}
 
 			dc.SetTextColor(oldTextColor);
@@ -732,6 +742,15 @@ void TagNamePrintDlg::OnBnClickedBtnPrint()
 					dc.FillSolidRect(&rectBottom2, RGB(80, 80, 80));
 					dc.Draw3dRect(&rectBottom2, RGB(50, 50, 50), RGB(200, 200, 200));
 					dc.DrawText(headerStr, &rectBottom2, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+					// [추가] 하단 공백 : 맨 아래 머리표 밑에 빈 칸 (표찰 홀더 길이 맞춤용)
+					int nBottomBlank = (int)(m_bottomBlankMm / 25.4 * dpiY);
+					if (nBottomBlank > 0)
+					{
+						CRect rectBlank(currentX, bottomY + nHeaderHeight, currentX + nLabelWidth, bottomY + nHeaderHeight + nBottomBlank);
+						dc.FillSolidRect(&rectBlank, RGB(255, 255, 255));
+						dc.Draw3dRect(&rectBlank, RGB(50, 50, 50), RGB(50, 50, 50));
+					}
 				}
 
 				dc.SetTextColor(oldTextColor);
@@ -809,11 +828,17 @@ void TagNamePrintDlg::OnBnClickedCellChangeButton()
 	if (!str.IsEmpty()) m_cellHeightMm = _tstof(str);
 	GetDlgItemText(IDC_EDIT_S, str);
 	if (!str.IsEmpty()) m_cellSpacingYMm = _tstof(str);
+	if (m_pEditBottom != nullptr && m_pEditBottom->GetSafeHwnd() != nullptr)
+	{
+		m_pEditBottom->GetWindowText(str);
+		if (!str.IsEmpty()) m_bottomBlankMm = _tstof(str);
+	}
 
-	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 8.0mm, 세로간격 0.0 ~ 3.0mm)
+	// mm 단위 유효 범위 제한 (가로 1.0 ~ 14.0mm, 세로 1.0 ~ 8.0mm, 세로간격 0.0 ~ 3.0mm, 하단 공백 0.0 ~ 30.0mm)
 	m_cellWidthMm = (std::min)((std::max)(m_cellWidthMm, 1.0), 14.0);
 	m_cellHeightMm = (std::min)((std::max)(m_cellHeightMm, 1.0), 8.0);
 	m_cellSpacingYMm = (std::min)((std::max)(m_cellSpacingYMm, 0.0), 3.0);
+	m_bottomBlankMm = (std::min)((std::max)(m_bottomBlankMm, 0.0), 30.0);
 
 	SaveSettings();
 	UpdateSettingEdits();
@@ -859,6 +884,7 @@ void TagNamePrintDlg::LoadSettings()
 	m_cellWidthMm = ReadProfileMm(GetProfileKey(_T("Width")), m_cellWidthMm);
 	m_cellHeightMm = ReadProfileMm(GetProfileKey(_T("Height")), m_cellHeightMm);
 	m_cellSpacingYMm = ReadProfileMm(GetProfileKey(_T("SpacingY")), m_cellSpacingYMm);
+	m_bottomBlankMm = ReadProfileMm(GetProfileKey(_T("BottomBlank")), m_bottomBlankMm);
 }
 
 void TagNamePrintDlg::SaveSettings()
@@ -866,10 +892,11 @@ void TagNamePrintDlg::SaveSettings()
 	WriteProfileMm(GetProfileKey(_T("Width")), m_cellWidthMm);
 	WriteProfileMm(GetProfileKey(_T("Height")), m_cellHeightMm);
 	WriteProfileMm(GetProfileKey(_T("SpacingY")), m_cellSpacingYMm);
+	WriteProfileMm(GetProfileKey(_T("BottomBlank")), m_bottomBlankMm);
 }
 
 // [추가] 미리보기 아래쪽(왼쪽)에 설정 입력란 배치
-//  칸 가로 / 칸 세로 / 세로 간격 + [적용]
+//  칸 가로 / 칸 세로 / 세로 간격 / 하단 공백 + [적용]
 void TagNamePrintDlg::LayoutSettingControls()
 {
 	CWnd* pPreview = GetDlgItem(IDC_STATIC_PREVIEW);
@@ -906,12 +933,19 @@ void TagNamePrintDlg::LayoutSettingControls()
 		x += w + labelGap;
 	};
 
+	// [추가] 하단 공백 입력란 (리소스에 없으므로 직접 생성)
+	m_pEditBottom = std::make_unique<CEdit>();
+	m_pEditBottom->CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""), WS_CHILD | WS_TABSTOP | ES_AUTOHSCROLL,
+		CRect(0, 0, editWidth, rowHeight), this, 0);
+	m_pEditBottom->SetFont(pFont);
+
 	// --- 1행 : 칸 크기 ---
 	int x = 20;
 	struct { LPCTSTR text; CWnd* pEdit; bool bShow; } sizeItems[] = {
 		{ _T("칸 가로(mm)"), pEditW, true },
 		{ _T("칸 세로(mm)"), pEditH, true },
 		{ _T("세로 간격(mm)"), pEditS, true },
+		{ _T("하단 공백(mm)"), m_pEditBottom.get(), true },
 	};
 	for (auto& item : sizeItems)
 	{
@@ -952,7 +986,11 @@ void TagNamePrintDlg::UpdateSettingEdits()
 	SetDlgItemText(IDC_EDIT_H, str);
 	str.Format(_T("%.1f"), m_cellSpacingYMm);
 	SetDlgItemText(IDC_EDIT_S, str);
-
+	if (m_pEditBottom != nullptr && m_pEditBottom->GetSafeHwnd() != nullptr)
+	{
+		str.Format(_T("%.1f"), m_bottomBlankMm);
+		m_pEditBottom->SetWindowText(str);
+	}
 }
 
 void TagNamePrintDlg::OnBnClickedBtnPrevPage()

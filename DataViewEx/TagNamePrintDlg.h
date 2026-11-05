@@ -25,6 +25,7 @@ protected:
 	double m_cellWidthMm;
 	double m_cellHeightMm;
 	double m_cellSpacingYMm;
+	double m_bottomBlankMm;  // [추가] 카드 맨 아래 머리표 밑 공백 (mm)
 	int m_nCurrentPage;
 	DECLARE_MESSAGE_MAP()
 public:
@@ -69,7 +70,8 @@ public:
 
 	// [추가] 표찰 크기 / 위치 조절 UI (현장에서 조절 후 인쇄, 값은 레지스트리에 저장)
 protected:
-	std::vector<std::unique_ptr<CStatic>> m_sizeLabels; // 칸 가로 / 세로 / 세로간격 이름표
+	std::vector<std::unique_ptr<CStatic>> m_sizeLabels; // 칸 가로 / 세로 / 세로간격 / 하단 공백 이름표
+	std::unique_ptr<CEdit> m_pEditBottom;               // [추가] 하단 공백 입력란
 	CString GetProfileKey(LPCTSTR pszName) const;
 	void LoadSettings();
 	void SaveSettings();
